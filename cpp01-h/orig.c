@@ -1,4 +1,4 @@
-//// NOTE: hlavicky relevantni pro jazyk C, ale uz je nechceme v ciste C++
+/// NOTE: hlavicky relevantni pro jazyk C, ale uz je nechceme v ciste C++
 /// projektu
 #include <stdio.h>
 #include <stdlib.h>
