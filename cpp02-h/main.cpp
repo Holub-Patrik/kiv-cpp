@@ -5,55 +5,57 @@
 #include <string>
 #include <vector>
 
-class RAII_File
-{
-	public:
-    FILE * file;
-    bool state;
+class RAII_File {
+private:
+  FILE *file;
+  bool state;
 
-     RAII_File(std::string path, std::string mode) {
-      // load the file and set status depending on outcome of fopen()
-      file = fopen(path.c_str(), mode.c_str());
-      state = file != NULL;
+public:
+  RAII_File(std::string path, std::string mode) {
+    // load the file and set status depending on outcome of fopen()
+    file = fopen(path.c_str(), mode.c_str());
+    state = file != NULL;
+  }
+
+  ~RAII_File() {
+    if (!state) {
+      return;
     }
 
-    ~RAII_File() {
-      int failed = fclose(file);
-      if (failed) {
-        std::cout << "Error while closing the file" << std::endl;
-      }
+    int failed = fclose(file);
+    if (failed) {
+      std::cout << "Error while closing the file" << std::endl;
+    }
+  }
+
+  std::string Read_Line() {
+    std::string line = "";
+
+    if (!state) {
+      return line;
     }
 
-		std::string Read_Line()
-		{
-      std::string line = "";
+    for (char c = fgetc(file); c != '\n' && c != EOF; c = fgetc(file)) {
+      line.push_back(c);
+    }
 
-      if (!state) {
-        return line;  
-      }
+    return line;
+  }
 
-      for (char c = fgetc(file); c != '\n' && c != EOF; c = fgetc(file)) {
-        line.push_back(c);
-      }
+  void Write_Line(const std::string &line) {
+    int failed = fprintf(file, "%s\n", line.c_str());
+  }
 
-			return line;
-		}
-
-		void Write_Line(const std::string& line)
-		{
-      std::string line_to_write = line + "\n";
-      int failed = fprintf(file, "%s", line_to_write.c_str());
-		}
+  bool is_open() { return state; }
 };
 
-void Generate_Files(std::vector<std::string> filenames)
-{
+void Generate_Files(std::vector<std::string> filenames) {
   std::vector<std::unique_ptr<RAII_File>> files;
 
   for (const auto filename : filenames) {
     auto file = std::make_unique<RAII_File>(filename, "w");
 
-    if (!file->state) {
+    if (!file->is_open()) {
       std::cout << "Error while opening file" << std::endl;
       continue;
     } else {
@@ -70,14 +72,13 @@ void Generate_Files(std::vector<std::string> filenames)
   }
 }
 
-bool Verify_Files(std::vector<std::string> filenames)
-{
+bool Verify_Files(std::vector<std::string> filenames) {
   std::vector<std::unique_ptr<RAII_File>> files;
 
   for (const auto filename : filenames) {
     auto file = std::make_unique<RAII_File>(filename, "r");
 
-    if (!file->state) {
+    if (!file->is_open()) {
       std::cout << "Error while opening file" << std::endl;
       continue;
     }
@@ -96,20 +97,19 @@ bool Verify_Files(std::vector<std::string> filenames)
     i++;
   }
 
-	return true;
+  return true;
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
   std::vector<std::string> filenames{"file1.txt", "file2.txt", "file3.txt"};
-	Generate_Files(filenames);
+  Generate_Files(filenames);
 
-	const bool outcome = Verify_Files(filenames);
+  const bool outcome = Verify_Files(filenames);
 
-	if (outcome)
-		std::cout << "Vse probehlo v poradku" << std::endl;
-	else
-		std::cerr << "Vyskytla se chyba!" << std::endl;
+  if (outcome)
+    std::cout << "Vse probehlo v poradku" << std::endl;
+  else
+    std::cerr << "Vyskytla se chyba!" << std::endl;
 
-	return 0;
+  return 0;
 }
