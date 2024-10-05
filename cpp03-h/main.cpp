@@ -83,14 +83,21 @@ int main(int argc, char *argv[]) {
   Vector2D vec_a(1.0, 2.0);
   Vector2D vec_b(2.0, 3.0);
 
-  auto vec_a_mult = vec_a *= 2.0;
-  auto vec_sum = vec_a + vec_b;
-  auto scalar = vec_a * vec_b;
+  const auto vec_a_mult = vec_a *= 2.0;
+  const auto vec_sum = vec_a + vec_b;
+  const auto scalar = vec_a * vec_b;
 
   std::cout << "Vector a: " << vec_a << std::endl;
   std::cout << "Vector b: " << vec_b << std::endl;
   std::cout << "Sum of a and b: " << vec_sum << std::endl;
   std::cout << "Dot product: " << scalar << std::endl;
+
+  const auto order = vec_a <=> vec_b;
+  std::cout << "Vec_a "
+            << (order < 0   ? "<"
+                : order > 0 ? ">"
+                            : "==")
+            << " Vec_b" << std::endl;
 
   return 0;
 }
