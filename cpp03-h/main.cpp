@@ -18,36 +18,24 @@ public:
   // returning NAN when accessing outside the vector
   double operator[](const int &idx) const {
     switch (idx) {
+    case 'a':
+    case 'x':
     case 0:
       return x;
       break;
+    case 'b':
+    case 'y':
     case 1:
       return y;
       break;
     default:
-      return NAN;
+      throw std::invalid_argument("Invalid array idx");
       break;
     }
   }
 
   // allow accessing into the vector using chars 'x', 'y'
   // returning NAN for other chars
-  double operator[](const char &idx) const {
-    switch (idx) {
-    case 'a':
-    case 'x':
-      return x;
-      break;
-    case 'b':
-    case 'y':
-      return y;
-      break;
-    default:
-      return NAN;
-      break;
-    }
-  }
-
   Vector2D operator+(const Vector2D &vec) const {
     return {x + vec.get_x(), y + vec.get_y()};
   }
