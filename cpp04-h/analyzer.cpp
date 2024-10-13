@@ -19,7 +19,7 @@ public:
 };
 
 CAnalyzer::CAnalyzer(std::vector<double> &&numbers) noexcept
-    : mNumbers(numbers), averages(), min(0), max(0) {
+    : mNumbers(numbers) {
   // NOTE: v teto metode nic nemente!
 }
 
@@ -53,7 +53,8 @@ CAnalyzer CAnalyzer::Create(const std::string &fileName) {
 }
 
 void CAnalyzer::Cache_Chunk_Averages() {
-  for (auto chunk : mNumbers | std::views::chunk(Measurements_Per_Chunk)) {
+  for (const auto chunk :
+       mNumbers | std::views::chunk(Measurements_Per_Chunk)) {
     averages.push_back(std::accumulate(chunk.begin(), chunk.end(), 0) /
                        (double)Measurements_Per_Chunk);
   }
@@ -88,7 +89,7 @@ CAnalyzer::Get_Piecewise_Averages() {
   std::array<double, Measurements_Per_Chunk> vals;
   auto arr_iter = vals.begin();
 
-  for (int i : std::views::iota(0, (int)Measurements_Per_Chunk)) {
+  for (const int i : std::views::iota(0, (int)Measurements_Per_Chunk)) {
 
     auto cols = std::ranges::subrange(mNumbers.begin() + i, mNumbers.end()) |
                 std::views::stride(Measurements_Per_Chunk);
