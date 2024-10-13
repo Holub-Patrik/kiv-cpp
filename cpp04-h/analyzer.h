@@ -35,6 +35,4 @@ public:
 private:
   const std::vector<double> mNumbers;
   std::vector<double> averages;
-  const double min;
-  const double max;
 };
