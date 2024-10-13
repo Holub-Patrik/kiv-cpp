@@ -1,5 +1,6 @@
 #include "analyzer.h"
 
+#include <exception>
 #include <iostream>
 
 #include <algorithm>
@@ -8,6 +9,14 @@
 #include <ranges>
 #include <stdexcept>
 #include <vector>
+
+class AnalyzerException : public std::exception {
+  const char *msg;
+
+public:
+  AnalyzerException(const char *msg) : msg(msg) {}
+  const char *what() const noexcept override { return msg; }
+};
 
 CAnalyzer::CAnalyzer(std::vector<double> &&numbers) noexcept
     : mNumbers(numbers), averages(), min(0), max(0) {
@@ -44,7 +53,6 @@ CAnalyzer CAnalyzer::Create(const std::string &fileName) {
 }
 
 void CAnalyzer::Cache_Chunk_Averages() {
-
   for (auto chunk : mNumbers | std::views::chunk(Measurements_Per_Chunk)) {
     averages.push_back(std::accumulate(chunk.begin(), chunk.end(), 0) /
                        (double)Measurements_Per_Chunk);
@@ -52,15 +60,24 @@ void CAnalyzer::Cache_Chunk_Averages() {
 }
 
 double CAnalyzer::Get_Min_Chunk_Average() const {
+  if (averages.empty()) {
+    throw AnalyzerException("Acessed min before caching chunk averages");
+  }
   return *std::ranges::min_element(averages.begin(), averages.end());
 }
 
 double CAnalyzer::Get_Max_Chunk_Average() const {
+  if (averages.empty()) {
+    throw AnalyzerException("Acessed min before caching chunk averages");
+  }
   return *std::ranges::max_element(averages.begin(), averages.end());
 }
 
 std::array<double, CAnalyzer::Measurements_Per_Chunk>
 CAnalyzer::Get_Piecewise_Averages() {
+  if (averages.empty()) {
+    throw AnalyzerException("Acessed min before caching chunk averages");
+  }
   /*
    * Implementacni poznamka:
    * pomoci algoritmu, ranges a views se pokuste vypocitat prumery pres sloupce
@@ -73,11 +90,11 @@ CAnalyzer::Get_Piecewise_Averages() {
 
   for (int i : std::views::iota(0, (int)Measurements_Per_Chunk)) {
 
-    auto chunk = std::ranges::subrange(mNumbers.begin() + i, mNumbers.end()) |
-                 std::views::stride(Measurements_Per_Chunk);
+    auto cols = std::ranges::subrange(mNumbers.begin() + i, mNumbers.end()) |
+                std::views::stride(Measurements_Per_Chunk);
 
-    *arr_iter++ = std::accumulate(chunk.begin(), chunk.end(), 0) /
-                  (double)Measurements_Per_Chunk;
+    *arr_iter++ =
+        std::accumulate(cols.begin(), cols.end(), 0) / (double)cols.size();
   }
 
   return vals;
