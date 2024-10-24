@@ -1,22 +1,13 @@
+// vim: softtabstop=0 shiftwidth=2 noexpandtab
 #include <iostream>
 
-class Test {
-    private:
-    int piss;
-    public:
-    Test(int given) : piss(given){}
-    ~Test() {
-        std::cout << "Goblin" << std::endl;
-    }
-
-    void print_piss() {
-        std::cout << piss << std::endl;
-    }
-};
+template <typename T> void increment(T &val) { val++; }
 
 int main() {
-    std::cout << "Starting ... " << std::endl;
-    Test t1{10};
-    t1.print_piss();
-    std::cout << "Ending ..." << std::endl;
+  std::cout << "Starting ... " << std::endl;
+
+  std::string str("Hello");
+  increment(str);
+
+  std::cout << "Ending ..." << std::endl;
 }
