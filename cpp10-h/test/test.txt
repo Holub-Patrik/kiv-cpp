@@ -1,0 +1,8 @@
+testing
+multi line regex
+try to find
+something
+
+maybe try sm80:20:30:10like thi
+
+!
