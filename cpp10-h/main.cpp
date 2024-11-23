@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
           double size_MiB = static_cast<double>(size) / MiB;
           std::println("{} | {:6.3f} MiB", name, size_MiB);
         }
-      } catch (std::exception ex) {
+      } catch (FileFinderException ex) {
         std::println("{}", ex.what());
         return 1;
       }
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
         for (auto& file : files) {
           std::println("{}", file.lexically_normal().string());
         }
-      } catch (std::exception ex) {
+      } catch (FileFinderException ex) {
         std::println("{}", ex.what());
         return 1;
       }

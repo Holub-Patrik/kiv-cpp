@@ -9,7 +9,7 @@ module;
 
 export module FileFinder;
 
-class FileFinderException : std::exception {
+export class FileFinderException : std::exception {
 public:
   explicit FileFinderException(const char* reason) : _msg(reason) {}
   explicit FileFinderException(const std::string reason) : _msg(reason) {}
