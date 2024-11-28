@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/home/holubpat/school/kiv-cpp/sp2",
+      "program": "/home/holubpat/school/kiv-cpp/sp2/build/Debug/outDebug"
+    }
+  ]
+}

@@ -123,8 +123,10 @@ k semestrální práci dodáte CMakeLists.txt soubor pro přeložení pomocí n�
 nesmí padat (segfault, abort, ...)
 nesmí vykazovat úniky paměti (bude ověřeno nástroji valgrind a CrtDebug)
 musí projít statickou analýzou MSVS2022
+
 Dále se v implementaci musí objevit:
-rozumný objektový návrh - členění do tříd, dědičnost, správná viditelnost atributů, dodržování zvyklostí a coding standardů
+rozumný objektový návrh 
+  - členění do tříd, dědičnost, správná viditelnost atributů, dodržování zvyklostí a coding standardů
 copy a move sémantika
 přetížené operátory
 lambda funkce
@@ -134,5 +136,7 @@ výjimky
 šablony
 koncept
 rozumné množství compile-time omezení a ověření (např. pomocí static_assert, std::enable_if, ...)
-optimalizace kódu - správné dekorování konstant a metod pomocí const, final, použití správných datových struktur, algoritmů z knihovny <algorithm>, apod.
+optimalizace kódu 
+  - správné dekorování konstant a metod pomocí 
+  const, final, použití správných datových struktur, algoritmů z knihovny <algorithm>, apod.
 tomuto kroku věnujte pak čas třeba i na konci, až budete celý program procházet před odevzdáním

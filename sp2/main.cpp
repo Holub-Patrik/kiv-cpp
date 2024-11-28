@@ -93,6 +93,55 @@ public:
     return repr;
   }
 
+  constexpr bool is_negative() {
+    auto last_elem = repr.back();
+    return (last_elem >> 31) & 1;
+  }
+
+  BigInt<size> get_complement() const {
+    auto complement_repr = repr;
+    std::for_each(std::execution::par_unseq, complement_repr.begin(),
+                  complement_repr.end(), [](auto& elem) { elem = !elem; });
+
+    BigInt<size> complement{complement_repr};
+    complement += BigInt<size>{1};
+    return complement;
+  }
+
+  template <uint64_t other_size>
+  BigInt<size> operator+=(BigInt<other_size> rhs) {
+    if (other_size > size) {
+      throw BigNumberException("Cannot do this!");
+    }
+
+    const auto& rhs_arr = rhs.get_repr();
+
+    auto& res_arr = repr;
+    const auto& work_arr = rhs.get_repr();
+    std::array<uint32_t, size> carry_arr{};
+    auto index_gen = std::views::iota(0);
+    auto index = std::views::counted(index_gen.begin(), size);
+
+    std::for_each(std::execution::par_unseq, index.begin(), index.end(),
+                  [&carry_arr, &res_arr, work_arr](auto index) {
+                    const uint64_t temp =
+                        static_cast<uint64_t>(res_arr[index]) +
+                        static_cast<uint64_t>(work_arr[index]);
+                    res_arr[index] = static_cast<uint32_t>(temp);
+                    carry_arr[index] = temp >> 32;
+                  });
+
+    std::for_each(std::execution::par_unseq, index.begin(), index.end(),
+                  [&carry_arr, &res_arr](auto index) {
+                    if (index == 0) {
+                      return;
+                    }
+                    res_arr[index] += carry_arr[index - 1];
+                  });
+
+    return *this;
+  }
+
   operator std::string() const {
     // division by ten seems to always shift the number by 3 bits
     // this I can pick the 3 lower bits of the next byte, shift them to top
@@ -121,39 +170,6 @@ public:
 
       ++index;
     }
-  }
-
-  template <uint64_t rhs_size>
-  BigInt<size>& operator+=(BigInt<rhs_size> const& rhs) {
-    if (rhs_size > size) {
-      throw BigNumberException(std::format(
-          "Cannot add BigNumber<{}> to BigNumber<{}>", rhs_size, size));
-    }
-
-    std::array<uint32_t, size_ceil(size, 4)> carry_arr{};
-    auto res_arr = this->repr;
-    auto work_arr = rhs.get_repr();
-    auto index_gen = std::views::iota(0);
-    auto index = std::views::counted(index_gen.begin(), rhs_size / 4);
-
-    std::for_each(std::execution::par_unseq, index.begin(), index.end(),
-                  [&carry_arr, &res_arr, &work_arr](auto index) {
-                    const uint64_t temp =
-                        static_cast<uint64_t>(res_arr[index]) +
-                        static_cast<uint64_t>(work_arr[index]);
-                    res_arr[index] = static_cast<uint32_t>(temp);
-                    carry_arr[index] = temp >> 32;
-                  });
-
-    std::for_each(std::execution::par_unseq, index.begin(), index.end(),
-                  [&carry_arr, &res_arr](auto index) {
-                    if (index == 0) {
-                      return;
-                    }
-                    res_arr[index] += carry_arr[index - 1];
-                  });
-
-    return *this;
   }
 };
 
@@ -201,14 +217,57 @@ operator+(BigInt<lhs_size> const& lhs, BigInt<rhs_size> const& rhs) {
   return BigInt<resulting_size>(res_arr);
 }
 
+template <uint64_t lhs_size, uint64_t rhs_size>
+BigInt<template_max(lhs_size, rhs_size)>
+operator-(BigInt<lhs_size> const& rhs, BigInt<rhs_size> const& lhs) {
+  lhs.get_complement();
+  return rhs + lhs;
+}
+
+template <uint64_t lhs_size, uint64_t rhs_size>
+auto operator<=>(BigInt<lhs_size> const& rhs, BigInt<rhs_size> const& lhs) {
+  auto lhs_arr = lhs.get_repr();
+  auto rhs_arr = rhs.get_repr();
+  size_t lhs_index = 0;
+  size_t rhs_index = 0;
+
+  for (auto it = lhs_arr.end(); it != lhs_arr.begin();) {
+    --it;
+
+    if (*it != 0) {
+      lhs_index = std::distance(lhs_arr.begin(), it);
+      break;
+    }
+  }
+
+  for (auto it = rhs_arr.end(); it != rhs_arr.begin();) {
+    --it;
+
+    if (*it != 0) {
+      lhs_index = std::distance(rhs_arr.begin(), it);
+      break;
+    }
+  }
+
+  std::println("{} ? {}", lhs_index, rhs_index);
+  if (lhs_index > rhs_index) {
+    return lhs_index <=> rhs_index;
+  } else if (lhs_index < rhs_index) {
+    return lhs_index <=> rhs_index;
+  } else {
+    return lhs_arr[lhs_index] <=> rhs_arr[rhs_index];
+  }
+}
+
 int main(int argc, char* argv[]) {
   BigInt<40> bg1{std::numeric_limits<uint32_t>::max()};
   BigInt<50> bg2{std::numeric_limits<uint32_t>::max()};
   BigInt<90> test{std::numeric_limits<uint32_t>::max()};
 
-  auto bg3 = bg1 + bg2;
-  bg3 += bg3;
-  std::println("\n{}\n", bg3.max_bytes());
+  auto bg3 = bg1 - bg2;
+  auto bg4 = bg1 + bg2;
+  bg4 += bg2;
+  std::println("{}\n", bg1 < bg3);
   for (auto& elem : bg3.get_repr()) {
     std::println("{}", elem);
   }
