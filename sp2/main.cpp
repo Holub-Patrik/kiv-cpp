@@ -109,38 +109,41 @@ public:
   }
 
   template <uint64_t other_size>
-  BigInt<size> operator+=(BigInt<other_size> rhs) {
-    if (other_size > size) {
-      throw BigNumberException("Cannot do this!");
-    }
+  BigInt<size> operator+=(BigInt<other_size> rhs);
 
-    const auto& rhs_arr = rhs.get_repr();
-
-    auto& res_arr = repr;
-    const auto& work_arr = rhs.get_repr();
-    std::array<uint32_t, size> carry_arr{};
-    auto index_gen = std::views::iota(0);
-    auto index = std::views::counted(index_gen.begin(), size);
-
-    std::for_each(std::execution::par_unseq, index.begin(), index.end(),
-                  [&carry_arr, &res_arr, work_arr](auto index) {
-                    const uint64_t temp =
-                        static_cast<uint64_t>(res_arr[index]) +
-                        static_cast<uint64_t>(work_arr[index]);
-                    res_arr[index] = static_cast<uint32_t>(temp);
-                    carry_arr[index] = temp >> 32;
-                  });
-
-    std::for_each(std::execution::par_unseq, index.begin(), index.end(),
-                  [&carry_arr, &res_arr](auto index) {
-                    if (index == 0) {
-                      return;
-                    }
-                    res_arr[index] += carry_arr[index - 1];
-                  });
-
-    return *this;
-  }
+  // template <uint64_t other_size>
+  // BigInt<size> operator+=(BigInt<other_size> rhs) {
+  //   if (other_size > size) {
+  //     throw BigNumberException("Cannot do this!");
+  //   }
+  //
+  //   const auto& rhs_arr = rhs.get_repr();
+  //
+  //   auto& res_arr = repr;
+  //   const auto& work_arr = rhs.get_repr();
+  //   std::array<uint32_t, size> carry_arr{};
+  //   auto index_gen = std::views::iota(0);
+  //   auto index = std::views::counted(index_gen.begin(), size);
+  //
+  //   std::for_each(std::execution::par_unseq, index.begin(), index.end(),
+  //                 [&carry_arr, &res_arr, work_arr](auto index) {
+  //                   const uint64_t temp =
+  //                       static_cast<uint64_t>(res_arr[index]) +
+  //                       static_cast<uint64_t>(work_arr[index]);
+  //                   res_arr[index] = static_cast<uint32_t>(temp);
+  //                   carry_arr[index] = temp >> 32;
+  //                 });
+  //
+  //   std::for_each(std::execution::par_unseq, index.begin(), index.end(),
+  //                 [&carry_arr, &res_arr](auto index) {
+  //                   if (index == 0) {
+  //                     return;
+  //                   }
+  //                   res_arr[index] += carry_arr[index - 1];
+  //                 });
+  //
+  //   return *this;
+  // }
 
   operator std::string() const {
     // division by ten seems to always shift the number by 3 bits
@@ -172,6 +175,10 @@ public:
     }
   }
 };
+
+template <uint64_t size>
+template <uint64_t other_size>
+BigInt<size> BigInt<size>::operator+=(BigInt<other_size> rhs) {}
 
 template <uint64_t lhs_size, uint64_t rhs_size>
 BigInt<template_max(lhs_size, rhs_size)>
