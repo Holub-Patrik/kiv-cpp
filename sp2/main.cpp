@@ -1,11 +1,14 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <compare>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <execution>
 #include <format>
+#include <iostream>
 #include <iterator>
 #include <print>
 #include <ranges>
@@ -57,19 +60,24 @@ private:
 public:
   // default constructor
   BigInt() {}
-  ~BigInt() {}
+  ~BigInt() { std::println("destroyed"); }
 
   // initialize using a number
-  // allow only for initializing using
+  // allow only for initializing using long
   BigInt(long num) : repr(std::array<short, size>{}) {
-    int i = 0;
-    while (num >= 10) {
-      repr[i] = num % 10;
-      num /= 10;
-      ++i;
+    negative = num < 0;
+    if (negative) {
+      num *= -1;
     }
 
-    repr[i] = num;
+    for (int i = 0; num > 0; ++i) {
+      if (i >= size) {
+        throw BigNumberException(
+            "Number too large for specified template size");
+      }
+      repr[i] = num % 10;
+      num /= 10;
+    }
   }
 
   BigInt(std::array<short, size>&& repr) : repr(repr) {}
@@ -109,15 +117,30 @@ public:
 
   template <uint64_t other_size>
   BigInt<template_max(size, other_size)> operator+=(BigInt<other_size> rhs);
+  BigInt<size> operator-();
 
   const std::string to_string() const {
     std::ostringstream s;
-    std::for_each(repr.rbegin(), repr.rend(), [&s](auto elem) { s << elem; });
+    if (negative) {
+      s << "-";
+    }
+    bool filler = true;
+
+    std::for_each(repr.rbegin(), repr.rend(), [&s, &filler](auto elem) {
+      if (elem != 0 || !filler) {
+        s << elem;
+        filler = false;
+      }
+    });
 
     return std::string{s.str()};
   }
+
+  const short operator[](size_t index) const { return repr[index]; }
+  const short last() const { return *repr.rbegin(); }
 };
 
+// currently only suports addition between positive numbers
 template <size_t size>
 template <size_t other_size>
 BigInt<template_max(size, other_size)>
@@ -129,8 +152,6 @@ template <size_t lhs_size, size_t rhs_size>
 BigInt<template_max(lhs_size, rhs_size)>
 operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
-  const auto& rhs_arr = rhs.get_repr();
-  const auto& lhs_arr = lhs.get_repr();
 
   std::array<short, resulting_size> res_arr;
   std::array<short, resulting_size> carry_arr;
@@ -138,64 +159,131 @@ operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   auto index = std::views::counted(index_gen.begin(), resulting_size);
 
   std::for_each(std::execution::par_unseq, index.begin(), index.end(),
-                [&carry_arr, &res_arr, &rhs_arr, &lhs_arr](auto index) {
-                  const short lhs_num =
-                      index == lhs_arr.size() ? 0 : lhs_arr[index];
-                  const short rhs_num =
-                      index == rhs_arr.size() ? 0 : rhs_arr[index];
+                [&carry_arr, &res_arr, &rhs, &lhs](auto i) {
+                  const short lhs_num = i < lhs_size ? lhs[i] : 0;
+                  const short rhs_num = i < rhs_size ? rhs[i] : 0;
                   const short temp = lhs_num + rhs_num;
-                  res_arr[index] = temp % 10;
-                  carry_arr[index] = temp / 10;
+                  res_arr[i] = temp % 10;
+                  carry_arr[i] = temp / 10;
                 });
 
-  std::for_each(std::execution::par_unseq, index.begin() + 1, index.end(),
-                [&carry_arr, &res_arr](auto index) {
-                  res_arr[index] += carry_arr[index - 1];
-                });
+  std::for_each(
+      std::execution::par_unseq, index.begin() + 1, index.end(),
+      [&carry_arr, &res_arr](auto i) { res_arr[i] += carry_arr[i - 1]; });
+
+  // calculate if overflow is about to happen
+  short rhs_val = *rhs.last();
+  short lhs_val = *lhs.last();
+  short carry_val = *carry_arr.rbegin() - 1;
+  short overflow = rhs_val + lhs_val + carry_val;
+  if (overflow > 10 || *carry_arr.rbegin()) {
+    throw BigNumberException("Overflow");
+  }
 
   return BigInt<resulting_size>{std::move(res_arr)};
 }
 
-template <uint64_t lhs_size, uint64_t rhs_size>
-auto operator<=>(BigInt<lhs_size> const& rhs, BigInt<rhs_size> const& lhs) {
-  auto lhs_arr = lhs.get_repr();
-  auto rhs_arr = rhs.get_repr();
+template <size_t lhs_size, size_t rhs_size>
+BigInt<template_max(lhs_size, rhs_size)>
+operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
+  constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
+
+  if ((lhs <=> rhs) == 0) {
+    return BigInt<resulting_size>{0};
+  } else if ((lhs <=> rhs) < 0) {
+    return -(rhs - lhs);
+  }
+
+  const auto& rhs_arr = rhs.get_repr();
+  const auto& lhs_arr = lhs.get_repr();
+
+  std::array<short, resulting_size> res_arr;
+  short carry = 0;
+  for (size_t i = 0; i < resulting_size; ++i) {
+    short lhs_num = i < lhs_size ? lhs[i] : 0;
+    short rhs_num = i < rhs_size ? rhs[i] + carry : 0;
+    std::print("{} - {} | ", lhs_num, rhs_num);
+    if (lhs_num - rhs_num >= 0) {
+      res_arr[i] = lhs_num - rhs_num;
+      carry = 0;
+    } else {
+      res_arr[i] = (lhs_num + 10) - rhs_num;
+      carry = 1;
+    }
+    std::println("{} | {}", res_arr[i], carry);
+  }
+
+  return BigInt<resulting_size>{std::move(res_arr)};
+}
+
+template <size_t lhs_size, size_t rhs_size>
+auto operator<=>(BigInt<lhs_size> const& lhs, BigInt<rhs_size> const& rhs) {
+  // check if one or the other is negative while the other isn't
+  // this means later that checking just one is fine
+  if (lhs.is_negative() && !rhs.is_negative()) {
+    return std::strong_ordering::less;
+  } else if (!lhs.is_negative() && rhs.is_negative()) {
+    return std::strong_ordering::greater;
+  }
+
+  // find index od the largest number in the array
   size_t lhs_index = 0;
   size_t rhs_index = 0;
 
-  for (auto it = lhs_arr.end(); it != lhs_arr.begin();) {
-    --it;
-
-    if (*it != 0) {
-      lhs_index = std::distance(lhs_arr.begin(), it);
+  for (size_t i = lhs_size; i--;) {
+    if (lhs[i]) {
+      lhs_index = i;
       break;
     }
   }
 
-  for (auto it = rhs_arr.end(); it != rhs_arr.begin();) {
-    --it;
-
-    if (*it != 0) {
-      lhs_index = std::distance(rhs_arr.begin(), it);
+  for (size_t i = rhs_size; i--;) {
+    if (rhs[i]) {
+      rhs_index = i;
       break;
     }
   }
 
-  std::println("{} ? {}", lhs_index, rhs_index);
-  if (lhs_index > rhs_index) {
-    return lhs_index <=> rhs_index;
-  } else if (lhs_index < rhs_index) {
-    return lhs_index <=> rhs_index;
+  // if indexes aren't equal, compare the indexes which is the same as
+  // comparing which number has the greater order of magnitude
+  //
+  // otherwise go down the numbers to find the first non-matching
+  // if no non-matching is found, return equal
+  std::strong_ordering order = std::strong_ordering::less;
+  if (lhs_index != rhs_index) {
+    order = lhs_index <=> rhs_index;
   } else {
-    return lhs_arr[lhs_index] <=> rhs_arr[rhs_index];
+    size_t i;
+    for (i = lhs_index; i > 0; --i) {
+      if (lhs[i] != rhs[i]) {
+        order = lhs[i] <=> rhs[i];
+        break;
+      }
+    }
+
+    if (!i) {
+      return std::strong_ordering::equal;
+    }
   }
+
+  // if the numbers were negative, the results needs to be flipped
+  if (lhs.is_negative()) {
+    order = 0 <=> order;
+  }
+
+  return order;
+}
+
+template <size_t size> BigInt<size> BigInt<size>::operator-() {
+  negative = !negative;
+  return *this;
 }
 
 int main(int argc, char* argv[]) {
-  BigInt<4> bg1{6000};
-  BigInt<5> bg2{6000};
+  BigInt<10> bg1{188};
+  BigInt<20> bg2{769};
 
-  auto bg3 = bg1 + bg2;
+  auto bg3 = bg1 - bg2;
   std::println("{}", bg3.to_string());
   return 0;
 }
