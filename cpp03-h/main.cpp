@@ -16,7 +16,7 @@ public:
 
   // access into vector like into an array,
   // returning NAN when accessing outside the vector
-  double operator[](const int &idx) const {
+  double operator[](const int& idx) const {
     switch (idx) {
     case 'a':
     case 'x':
@@ -36,38 +36,38 @@ public:
 
   // allow accessing into the vector using chars 'x', 'y'
   // returning NAN for other chars
-  Vector2D operator+(const Vector2D &vec) const {
+  Vector2D operator+(const Vector2D& vec) const {
     return {x + vec.get_x(), y + vec.get_y()};
   }
-  Vector2D operator+=(const Vector2D &vec) {
+  Vector2D operator+=(const Vector2D& vec) {
     x += vec['x'];
     y += vec['y'];
 
     return *this;
   }
 
-  Vector2D operator*(const double &n) const { return {x * n, y * n}; }
-  Vector2D operator*=(const double &n) {
+  Vector2D operator*(const double& n) const { return {x * n, y * n}; }
+  Vector2D operator*=(const double& n) {
     x *= n;
     y *= n;
     return *this;
   }
 
-  double operator*(const Vector2D &vec) const {
+  double operator*(const Vector2D& vec) const {
     return x * vec['x'] + y * vec['y'];
   }
 
-  auto operator<=>(const Vector2D &vec) const {
+  auto operator<=>(const Vector2D& vec) const {
     return this->get_size() <=> vec.get_size();
   }
 };
 
-std::ostream &operator<<(std::ostream &os, const Vector2D &vec) {
+std::ostream& operator<<(std::ostream& os, const Vector2D& vec) {
   os << "[" << vec['x'] << "," << vec['y'] << "]";
   return os;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   Vector2D vec_a(1.0, 2.0);
   Vector2D vec_b(2.0, 3.0);
 
