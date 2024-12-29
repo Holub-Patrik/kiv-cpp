@@ -24,14 +24,6 @@ template <typename T> consteval T template_max(const T& lhs, const T& rhs) {
 }
 
 template <typename T>
-concept SizeParam = std::convertible_to<T, uint64_t> && requires(T t) {
-  { t + t } -> std::convertible_to<T>;
-  { t - t } -> std::convertible_to<T>;
-  { t % t } -> std::convertible_to<T>;
-  { t / t } -> std::convertible_to<T>;
-};
-
-template <typename T>
 concept TrivialIntegral =
     std::integral<T> && requires(T t) { t >= 0 && t < 10; };
 
@@ -132,6 +124,15 @@ template <size_t size> const short BigInt<size>::last() const {
 
 template <size_t size>
 BigInt<size>& BigInt<size>::operator<<(size_t shift_amount) {
+  bool except = false;
+
+  for (int i = size - 1; i >= size - static_cast<int>(shift_amount) - size;
+       --i) {
+    if (repr[i]) {
+      except = true;
+    }
+  }
+
   for (int i = size - 1; i >= static_cast<int>(shift_amount); --i) {
     repr[i] = repr[i - shift_amount];
   }
@@ -139,19 +140,17 @@ BigInt<size>& BigInt<size>::operator<<(size_t shift_amount) {
   for (size_t i = 0; i < shift_amount; ++i) {
     repr[i] = 0;
   }
+
+  if (except) {
+    throw BigNumberException<size>("Overflow [<<]", *this);
+  }
+
   return *this;
 }
 
 template <size_t size>
 template <size_t other_size>
 BigInt<size> BigInt<size>::operator+=(const BigInt<other_size>& rhs) {
-  if (other_size > size) {
-    for (size_t i = size; i < other_size; i++) {
-      if (rhs[i]) {
-        throw BigNumberException<size>("Overflow [+=] before");
-      }
-    }
-  }
 
   const bool lhs_neg = negative;
   const bool rhs_neg = rhs.is_negative();
@@ -182,7 +181,16 @@ BigInt<size> BigInt<size>::operator+=(const BigInt<other_size>& rhs) {
   });
 
   if (carry) {
-    throw BigNumberException<size>("Overflow [+=] carry");
+    throw BigNumberException<size>("Overflow [+=](carry)", *this);
+  }
+
+  if (other_size > size) {
+    for (size_t i = size; i < other_size; i++) {
+      if (rhs[i]) {
+        throw BigNumberException<size>("Overflow [+=](number too large)",
+                                       *this);
+      }
+    }
   }
 
   return *this;
@@ -227,7 +235,8 @@ operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
                 });
 
   if (carry) {
-    throw BigNumberException<resulting_size>("Overflow [+] carry");
+    throw BigNumberException<resulting_size>(
+        "Overflow [+](carry)", BigInt<resulting_size>{std::move(res_arr)});
   }
 
   return BigInt<resulting_size>{std::move(res_arr)};
@@ -279,6 +288,10 @@ BigInt<size> BigInt<size>::operator-=(const BigInt<other_size>& rhs) {
 
   if (lr_cmp < 0) {
     negative = !negative;
+  }
+
+  if (carry) {
+    throw BigNumberException<size>("Overflow [+=](carry)", *this);
   }
 
   return *this;
@@ -338,6 +351,11 @@ operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
     }
   }
 
+  if (carry) {
+    throw BigNumberException<resulting_size>(
+        "Oveflow [-](carry)", BigInt<resulting_size>{std::move(res_arr)});
+  }
+
   return BigInt<resulting_size>{std::move(res_arr)};
 }
 
@@ -355,8 +373,10 @@ BigInt<size> operator*(const BigInt<size>& num,
                   res_arr[i] = temp % 10;
                   carry = temp / 10;
                 });
+
   if (carry) {
-    throw BigNumberException<size>("Overflow [*] carry");
+    throw BigNumberException<size>("Overflow [*](carry)",
+                                   BigInt<size>{std::move(res_arr)});
   }
 
   return BigInt<size>{std::move(res_arr)};
@@ -508,6 +528,11 @@ auto operator<=>(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
 }
 
 template <size_t size> BigInt<size> BigInt<size>::factorial() const {
+  if (negative) {
+    throw BigNumberException<size>(
+        "Factorial cannot be performed on negative numbers");
+  }
+
   BigInt<size> res{1};
 
   for (BigInt<size> i{1}; (i <=> *this) <= 0; i += BigInt<size>{1}) {
