@@ -1,0 +1,3 @@
+/home/holubpat/school/kiv-cpp/sp2/CMakeFiles/bin.out.dir
+/home/holubpat/school/kiv-cpp/sp2/CMakeFiles/edit_cache.dir
+/home/holubpat/school/kiv-cpp/sp2/CMakeFiles/rebuild_cache.dir

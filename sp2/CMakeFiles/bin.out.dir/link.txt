@@ -1,0 +1,1 @@
+/usr/bin/c++ -rdynamic -Wl,--dependency-file=CMakeFiles/bin.out.dir/link.d CMakeFiles/bin.out.dir/src/main.cpp.o -o bin.out

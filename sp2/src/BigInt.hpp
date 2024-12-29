@@ -5,9 +5,6 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
-#include <execution>
-#include <format>
 #include <iostream>
 #include <print>
 #include <ranges>
@@ -18,9 +15,8 @@
 #include "BigIntDef.hpp"
 #include "BigNumberException.hpp"
 
-template <typename T>
-static consteval T template_max(const T& lhs, const T& rhs) {
-  if (lhs > rhs) {
+template <typename T> consteval T template_max(const T& lhs, const T& rhs) {
+  if (lhs < rhs) {
     return lhs;
   } else {
     return rhs;
@@ -39,7 +35,7 @@ template <typename T>
 concept TrivialIntegral =
     std::integral<T> && requires(T t) { t >= 0 && t < 10; };
 
-template <std::size_t size>
+template <size_t size>
 BigInt<size>::BigInt(long num) : repr(std::array<short, size>{}) {
   negative = num < 0;
   if (negative) {
@@ -56,23 +52,23 @@ BigInt<size>::BigInt(long num) : repr(std::array<short, size>{}) {
   }
 }
 
-template <std::size_t size>
+template <size_t size>
 BigInt<size>::BigInt(std::array<short, size>&& repr) : repr(repr) {}
 
 // move constructor
-template <std::size_t size>
+template <size_t size>
 BigInt<size>::BigInt(BigInt<size>&& other) noexcept
     : repr(std::move(other.repr)), negative(other.negative) {}
 
 // copy constructor
-template <std::size_t size>
+template <size_t size>
 BigInt<size>::BigInt(const BigInt<size>& other) noexcept {
   negative = other.negative;
   repr = other.repr;
 }
 
 // copy assignment
-template <std::size_t size>
+template <size_t size>
 BigInt<size>& BigInt<size>::operator=(const BigInt<size>& other) {
   if (this == &other)
     return *this;
@@ -85,7 +81,7 @@ BigInt<size>& BigInt<size>::operator=(const BigInt<size>& other) {
 }
 
 // move assignment
-template <std::size_t size>
+template <size_t size>
 BigInt<size>& BigInt<size>::operator=(BigInt<size>&& other) noexcept {
   BigInt<size> temp(std::move(other));
   std::swap(repr, temp.repr);
@@ -93,35 +89,21 @@ BigInt<size>& BigInt<size>::operator=(BigInt<size>&& other) noexcept {
   return *this;
 }
 
-template <std::size_t size>
-constexpr const std::size_t BigInt<size>::num_order() const noexcept {
-  return order;
-};
-
-template <std::size_t size>
-const std::array<short, size>& BigInt<size>::get_repr() const noexcept {
-  return repr;
-}
-
-template <std::size_t size> const bool BigInt<size>::is_negative() const {
-  return negative;
-}
-
-template <std::size_t size>
-template <std::size_t other_size>
+template <size_t size>
+template <size_t other_size>
 BigInt<template_max(size, other_size)>
 BigInt<size>::operator+=(BigInt<other_size> rhs) {
   return *this + rhs;
 }
 
-template <std::size_t size>
-template <std::size_t other_size>
+template <size_t size>
+template <size_t other_size>
 BigInt<template_max(size, other_size)>
 BigInt<size>::operator-=(BigInt<other_size> rhs) {
   return *this - rhs;
 }
 
-template <std::size_t size> BigInt<size>::operator std::string() const {
+template <size_t size> BigInt<size>::operator std::string() const {
   std::ostringstream s;
   if (negative) {
     s << "-";
@@ -131,7 +113,7 @@ template <std::size_t size> BigInt<size>::operator std::string() const {
   std::for_each(repr.rbegin(), repr.rend(), [&s, &filler](auto elem) {
     if (elem != 0 || !filler) {
       s << elem;
-      s << " ";
+      // s << " ";
       filler = false;
     }
   });
@@ -143,26 +125,26 @@ template <std::size_t size> BigInt<size>::operator std::string() const {
   return std::string{s.str()};
 }
 
-template <std::size_t size>
+template <size_t size>
 std::ostream& operator<<(std::ostream& os, const BigInt<size>& num) {
   os << static_cast<std::string>(num);
   return os;
 }
 
-template <std::size_t size>
+template <size_t size>
 const short BigInt<size>::operator[](size_t index) const {
   return repr[index];
 }
 
-template <std::size_t size> short& BigInt<size>::operator[](size_t index) {
+template <size_t size> short& BigInt<size>::operator[](size_t index) {
   return repr[index];
 }
 
-template <std::size_t size> const short BigInt<size>::last() const {
+template <size_t size> const short BigInt<size>::last() const {
   return *repr.rbegin();
 }
 
-template <std::size_t size>
+template <size_t size>
 BigInt<size>& BigInt<size>::operator<<(size_t shift_amount) {
   for (size_t i = size - 1; i >= shift_amount; --i) {
     if (repr[i]) {
@@ -221,9 +203,9 @@ operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   return BigInt<resulting_size>{std::move(res_arr)};
 }
 
-template <std::size_t size> BigInt<size>& BigInt<size>::operator-() {
-  auto new_num = BigInt<size>(*this);
-  new_num.negative = !new_num.negative;
+template <size_t size> BigInt<size> operator-(const BigInt<size>& num) {
+  auto new_num = BigInt<size>(num);
+  new_num.neg();
   return new_num;
 }
 
@@ -361,56 +343,4 @@ auto operator<=>(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   }
 
   return order;
-}
-
-void print_sums() {
-
-  BigInt<10> pos_a{89};
-  BigInt<11> pos_b{18};
-  BigInt<12> neg_a{-13};
-  BigInt<13> neg_b{-14};
-
-  std::cout << pos_a << " - " << pos_a << " = " << pos_a - pos_a << std::endl;
-
-  // a + b => a + b;
-  std::cout << pos_a << " + " << pos_b << " = " << pos_a + pos_b << std::endl;
-
-  // a - b => -(b - a)
-  std::cout << pos_a << " - " << pos_b << " = " << pos_a - pos_b << std::endl;
-
-  // a - b => a - b
-  std::cout << pos_b << " - " << pos_a << " = " << pos_b - pos_a << std::endl;
-
-  // a + (-b) => a - b
-  std::cout << pos_a << " + " << neg_b << " = " << pos_a + neg_b << std::endl;
-
-  // a - (-b) => a + b
-  std::cout << pos_a << " - " << neg_b << " = " << pos_a - neg_b << std::endl;
-
-  // -a + b => -(a - b)
-  std::cout << neg_a << " + " << pos_b << " = " << neg_a + pos_b << std::endl;
-
-  // -a - b => -(a + b)
-  std::cout << neg_a << " - " << pos_b << " = " << neg_a - pos_b << std::endl;
-
-  // -a  + (-b) => -(a + b)
-  std::cout << neg_a << " + " << neg_b << " = " << neg_a + neg_b << std::endl;
-
-  // -a - (-b) => -(a - b)
-  std::cout << neg_a << " - " << neg_b << " = " << neg_a - neg_b << std::endl;
-}
-
-int main(int argc, char* argv[]) {
-  print_sums();
-  BigInt<3> a{500};
-  BigInt<3> b{500};
-  std::cout << a << std::endl;
-  try {
-    auto c = b + b;
-    std::cout << c << std::endl;
-  } catch (std::exception e) {
-    std::println("{}", e.what());
-  }
-  // print_sums();
-  return 0;
 }
