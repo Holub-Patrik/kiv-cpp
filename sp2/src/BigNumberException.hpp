@@ -1,5 +1,6 @@
 #pragma once
 #include "BigIntDef.hpp"
+
 #include <exception>
 #include <string>
 

@@ -1,6 +1,9 @@
 #pragma once
-#include <array>
+#include <limits>
 #include <string>
+#include <vector>
+
+constexpr size_t Unlimited = std::numeric_limits<size_t>::max();
 
 template <typename T>
 static consteval T template_max(const T& lhs, const T& rhs);
@@ -9,14 +12,14 @@ template <size_t size> class BigInt {
 private:
   bool negative = false;
   const size_t order = size;
-  std::array<short, size> repr{};
+  std::vector<short> repr{};
 
 public:
   BigInt() {};
   ~BigInt() {};
 
   BigInt(long);
-  BigInt(std::array<short, size>&&);
+  BigInt(std::vector<short>&&);
   BigInt(BigInt<size>&&) noexcept;
   BigInt(const BigInt<size>&) noexcept;
 
@@ -24,7 +27,7 @@ public:
   BigInt& operator=(BigInt<size>&&) noexcept;
 
   constexpr const size_t num_order() const noexcept { return order; };
-  const std::array<short, size>& get_repr() const noexcept { return repr; };
+  const std::vector<short>& get_repr() const noexcept { return repr; };
   const bool is_negative() const noexcept { return negative; }
   BigInt<size>& neg() noexcept {
     negative = !negative;

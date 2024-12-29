@@ -1,16 +1,14 @@
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <compare>
 #include <concepts>
 #include <cstddef>
-#include <cstdint>
 #include <iostream>
 #include <print>
-#include <ranges>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "BigIntDef.hpp"
 #include "BigNumberException.hpp"
@@ -28,7 +26,7 @@ concept TrivialIntegral =
     std::integral<T> && requires(T t) { t >= 0 && t < 10; };
 
 template <size_t size>
-BigInt<size>::BigInt(long num) : repr(std::array<short, size>{}) {
+BigInt<size>::BigInt(long num) : repr(std::vector<short>{}) {
   negative = num < 0;
   if (negative) {
     num *= -1;
@@ -39,13 +37,13 @@ BigInt<size>::BigInt(long num) : repr(std::array<short, size>{}) {
       throw BigNumberException<size>(
           "Number too large for specified template size");
     }
-    repr[i] = num % 10;
+    repr.push_back(num % 10);
     num /= 10;
   }
 }
 
 template <size_t size>
-BigInt<size>::BigInt(std::array<short, size>&& repr) : repr(repr) {}
+BigInt<size>::BigInt(std::vector<short>&& repr) : repr(repr) {}
 
 // move constructor
 template <size_t size>
@@ -91,7 +89,7 @@ template <size_t size> BigInt<size>::operator std::string() const {
   std::for_each(repr.rbegin(), repr.rend(), [&s, &filler](auto elem) {
     if (elem != 0 || !filler) {
       s << elem;
-      // s << " ";
+      s << " ";
       filler = false;
     }
   });
@@ -111,15 +109,31 @@ std::ostream& operator<<(std::ostream& os, const BigInt<size>& num) {
 
 template <size_t size>
 const short BigInt<size>::operator[](size_t index) const {
+  if (index < 0 || index >= size) {
+    throw BigNumberException<size>("Array out of bounds access", *this);
+  }
+
   return repr[index];
 }
 
 template <size_t size> short& BigInt<size>::operator[](size_t index) {
+  if (index < 0 || index >= size) {
+    throw BigNumberException<size>("Array out of bounds access", *this);
+  }
+
+  if (repr.size() < size) {
+    repr.resize(repr.size() + 10);
+  }
+
   return repr[index];
 }
 
 template <size_t size> const short BigInt<size>::last() const {
-  return *repr.rbegin();
+  if (repr.size() < size) {
+    return repr[repr.size() - 1];
+  } else {
+    return repr[size - 1];
+  }
 }
 
 template <size_t size>
@@ -169,16 +183,14 @@ BigInt<size> BigInt<size>::operator+=(const BigInt<other_size>& rhs) {
   }
 
   short carry = 0;
-  auto index_gen = std::views::iota(0);
-  auto index = std::views::counted(index_gen.begin(), size);
 
-  std::for_each(index.begin(), index.end(), [this, &rhs, &carry](auto i) {
+  for (size_t i = 0; i < size; ++i) {
     const short lhs_num = i < size ? repr[i] : 0;
     const short rhs_num = i < other_size ? rhs[i] : 0;
     const short temp = lhs_num + rhs_num + carry;
     repr[i] = temp % 10;
     carry = temp / 10;
-  });
+  }
 
   if (carry) {
     throw BigNumberException<size>("Overflow [+=](carry)", *this);
@@ -220,26 +232,22 @@ operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
     return -(-lhs + -rhs);
   }
 
-  std::array<short, resulting_size> res_arr;
+  BigInt<resulting_size> res;
+
   short carry = 0;
-  auto index_gen = std::views::iota(0);
-  auto index = std::views::counted(index_gen.begin(), resulting_size);
-
-  std::for_each(index.begin(), index.end(),
-                [&carry, &res_arr, &rhs, &lhs](auto i) {
-                  const short lhs_num = i < lhs_size ? lhs[i] : 0;
-                  const short rhs_num = i < rhs_size ? rhs[i] : 0;
-                  const short temp = lhs_num + rhs_num + carry;
-                  res_arr[i] = temp % 10;
-                  carry = temp / 10;
-                });
-
-  if (carry) {
-    throw BigNumberException<resulting_size>(
-        "Overflow [+](carry)", BigInt<resulting_size>{std::move(res_arr)});
+  for (size_t i = 0; i < resulting_size; ++i) {
+    const short lhs_num = i < lhs_size ? lhs[i] : 0;
+    const short rhs_num = i < rhs_size ? rhs[i] : 0;
+    const short temp = lhs_num + rhs_num + carry;
+    res[i] = temp % 10;
+    carry = temp / 10;
   }
 
-  return BigInt<resulting_size>{std::move(res_arr)};
+  if (carry) {
+    throw BigNumberException<resulting_size>("Overflow [+](carry)", res);
+  }
+
+  return res;
 }
 
 template <size_t size>
@@ -291,7 +299,7 @@ BigInt<size> BigInt<size>::operator-=(const BigInt<other_size>& rhs) {
   }
 
   if (carry) {
-    throw BigNumberException<size>("Overflow [+=](carry)", *this);
+    throw BigNumberException<size>("Overflow [-=](carry)", *this);
   }
 
   return *this;
@@ -337,49 +345,43 @@ operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
     return -(-lhs - -rhs);
   }
 
-  std::array<short, resulting_size> res_arr;
+  BigInt<resulting_size> res;
   short carry = 0;
   for (size_t i = 0; i < resulting_size; ++i) {
-    short lhs_num = i < lhs_size ? lhs[i] : 0;
-    short rhs_num = i < rhs_size ? rhs[i] + carry : 0;
+    const short lhs_num = i < lhs.get_repr().size() ? lhs[i] : 0;
+    const short rhs_num = i < rhs.get_repr().size() ? rhs[i] + carry : 0;
     if (lhs_num - rhs_num >= 0) {
-      res_arr[i] = lhs_num - rhs_num;
+      res[i] = lhs_num - rhs_num;
       carry = 0;
     } else {
-      res_arr[i] = (lhs_num + 10) - rhs_num;
+      res[i] = (lhs_num + 10) - rhs_num;
       carry = 1;
     }
   }
 
   if (carry) {
-    throw BigNumberException<resulting_size>(
-        "Oveflow [-](carry)", BigInt<resulting_size>{std::move(res_arr)});
+    throw BigNumberException<resulting_size>("Oveflow [-](carry)", res);
   }
 
-  return BigInt<resulting_size>{std::move(res_arr)};
+  return res;
 }
 
 template <size_t size>
 BigInt<size> operator*(const BigInt<size>& num,
                        const TrivialIntegral auto mul) {
-  std::array<short, size> res_arr;
+  BigInt<size> res;
   short carry = 0;
-  auto index_gen = std::views::iota(0);
-  auto index = std::views::counted(index_gen.begin(), size);
-
-  std::for_each(index.begin(), index.end(),
-                [&carry, &res_arr, &num, &mul](auto i) {
-                  const short temp = num[i] * mul + carry;
-                  res_arr[i] = temp % 10;
-                  carry = temp / 10;
-                });
-
-  if (carry) {
-    throw BigNumberException<size>("Overflow [*](carry)",
-                                   BigInt<size>{std::move(res_arr)});
+  for (size_t i = 0; i < size; ++i) {
+    const short temp = num[i] * mul + carry;
+    res[i] = temp % 10;
+    carry = temp / 10;
   }
 
-  return BigInt<size>{std::move(res_arr)};
+  if (carry) {
+    throw BigNumberException<size>("Overflow [*](carry)", res);
+  }
+
+  return res;
 }
 
 template <size_t lhs_size, size_t rhs_size>

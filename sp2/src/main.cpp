@@ -1,5 +1,5 @@
+#include "BigInt.hpp"
 #include "BigIntDef.hpp"
-#include "BigIntFin.hpp"
 // #include "BigNumberException.hpp"
 #include <exception>
 
@@ -22,6 +22,8 @@ void print_sums() {
   std::cout << pos_b << " - " << pos_a << " = " << pos_b - pos_a << std::endl;
 
   // a + (-b) => a - b
+  //
+  auto c = pos_a + neg_b;
   std::cout << pos_a << " + " << neg_b << " = " << pos_a + neg_b << std::endl;
 
   // a - (-b) => a + b
