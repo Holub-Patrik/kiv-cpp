@@ -89,20 +89,6 @@ BigInt<size>& BigInt<size>::operator=(BigInt<size>&& other) noexcept {
   return *this;
 }
 
-template <size_t size>
-template <size_t other_size>
-BigInt<template_max(size, other_size)>
-BigInt<size>::operator+=(BigInt<other_size> rhs) {
-  return *this + rhs;
-}
-
-template <size_t size>
-template <size_t other_size>
-BigInt<template_max(size, other_size)>
-BigInt<size>::operator-=(BigInt<other_size> rhs) {
-  return *this - rhs;
-}
-
 template <size_t size> BigInt<size>::operator std::string() const {
   std::ostringstream s;
   if (negative) {
@@ -146,15 +132,59 @@ template <size_t size> const short BigInt<size>::last() const {
 
 template <size_t size>
 BigInt<size>& BigInt<size>::operator<<(size_t shift_amount) {
-  for (size_t i = size - 1; i >= shift_amount; --i) {
-    if (repr[i]) {
-      throw BigNumberException<size>("Overflow");
-    }
+  for (int i = size - 1; i >= static_cast<int>(shift_amount); --i) {
     repr[i] = repr[i - shift_amount];
   }
+
   for (size_t i = 0; i < shift_amount; ++i) {
     repr[i] = 0;
   }
+  return *this;
+}
+
+template <size_t size>
+template <size_t other_size>
+BigInt<size> BigInt<size>::operator+=(const BigInt<other_size>& rhs) {
+  if (other_size > size) {
+    for (size_t i = size; i < other_size; i++) {
+      if (rhs[i]) {
+        throw BigNumberException<size>("Overflow [+=] before");
+      }
+    }
+  }
+
+  const bool lhs_neg = negative;
+  const bool rhs_neg = rhs.is_negative();
+  const auto lr_cmp = *this <=> rhs;
+
+  if (!lhs_neg && rhs_neg) {
+    return *this -= -rhs;
+  }
+
+  if (lhs_neg && !rhs_neg) {
+    return (this->neg() -= rhs).neg();
+  }
+
+  if (lhs_neg && rhs_neg) {
+    return (this->neg() += -rhs).neg();
+  }
+
+  short carry = 0;
+  auto index_gen = std::views::iota(0);
+  auto index = std::views::counted(index_gen.begin(), size);
+
+  std::for_each(index.begin(), index.end(), [this, &rhs, &carry](auto i) {
+    const short lhs_num = i < size ? repr[i] : 0;
+    const short rhs_num = i < other_size ? rhs[i] : 0;
+    const short temp = lhs_num + rhs_num + carry;
+    repr[i] = temp % 10;
+    carry = temp / 10;
+  });
+
+  if (carry) {
+    throw BigNumberException<size>("Overflow [+=] carry");
+  }
+
   return *this;
 }
 
@@ -197,10 +227,61 @@ operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
                 });
 
   if (carry) {
-    throw BigNumberException<resulting_size>("Overflow");
+    throw BigNumberException<resulting_size>("Overflow [+] carry");
   }
 
   return BigInt<resulting_size>{std::move(res_arr)};
+}
+
+template <size_t size>
+template <size_t other_size>
+BigInt<size> BigInt<size>::operator-=(const BigInt<other_size>& rhs) {
+  const bool lhs_neg = negative;
+  const bool rhs_neg = rhs.is_negative();
+  const auto lr_cmp = *this <=> rhs;
+
+  if (lr_cmp == 0) {
+    return BigInt<size>{0};
+  }
+
+  if (!lhs_neg && rhs_neg) {
+    return *this += -rhs;
+  }
+
+  if (lhs_neg && !rhs_neg) {
+    return ((*this).neg() += rhs).neg();
+  }
+
+  if (lhs_neg && rhs_neg) {
+    return ((*this).neg() -= -rhs).neg();
+  }
+
+  short carry = 0;
+  for (size_t i = 0; i < size; ++i) {
+    const short lhs_num = i < size ? repr[i] : 0;
+    const short rhs_num = i < other_size ? rhs[i] + carry : 0;
+    short temp;
+
+    if (lr_cmp < 0) {
+      temp = rhs_num - lhs_num;
+    } else {
+      temp = lhs_num - rhs_num;
+    }
+
+    if (temp >= 0) {
+      repr[i] = temp;
+      carry = 0;
+    } else {
+      repr[i] = temp + 10;
+      carry = 1;
+    }
+  }
+
+  if (lr_cmp < 0) {
+    negative = !negative;
+  }
+
+  return *this;
 }
 
 template <size_t size> BigInt<size> operator-(const BigInt<size>& num) {
@@ -260,10 +341,6 @@ operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   return BigInt<resulting_size>{std::move(res_arr)};
 }
 
-template <size_t lhs_size, size_t rhs_size>
-BigInt<template_max(lhs_size, rhs_size)>
-operator*(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {}
-
 template <size_t size>
 BigInt<size> operator*(const BigInt<size>& num,
                        const TrivialIntegral auto mul) {
@@ -279,10 +356,95 @@ BigInt<size> operator*(const BigInt<size>& num,
                   carry = temp / 10;
                 });
   if (carry) {
-    throw BigNumberException<size>("Overflow");
+    throw BigNumberException<size>("Overflow [*] carry");
   }
 
   return BigInt<size>{std::move(res_arr)};
+}
+
+template <size_t lhs_size, size_t rhs_size>
+BigInt<template_max(lhs_size, rhs_size)>
+operator*(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
+  constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
+
+  BigInt<resulting_size> res_num{};
+  for (size_t i = 0; i < resulting_size; ++i) {
+    auto temp_num = lhs * rhs[i];
+    if ((temp_num <=> BigInt<1>{0}) != 0) {
+      res_num += temp_num << i;
+    }
+  }
+
+  if (lhs.is_negative() && !rhs.is_negative() ||
+      !lhs.is_negative() && rhs.is_negative()) {
+    res_num.neg();
+  }
+
+  return res_num;
+}
+
+template <size_t size>
+template <size_t other_size>
+BigInt<size> BigInt<size>::operator*=(const BigInt<other_size>& rhs) {
+  BigInt<size> res_num{};
+  for (size_t i = 0; i < size; ++i) {
+    auto temp_num = *this * rhs[i];
+    if ((temp_num <=> BigInt<1>{0}) != 0) {
+      res_num += temp_num << i;
+    }
+  }
+
+  if (negative && !rhs.is_negative() || !negative && rhs.is_negative()) {
+    res_num.neg();
+  }
+
+  repr = std::move(res_num.repr);
+  negative = res_num.negative;
+
+  return *this;
+}
+
+template <size_t lhs_size, size_t rhs_size>
+BigInt<template_max(lhs_size, rhs_size)>
+operator/(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
+  constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
+
+  BigInt<resulting_size> res{0};
+  auto temp = lhs.abs();
+  auto sub_abs = rhs.abs();
+  while ((temp <=> rhs) > 0) {
+    res += BigInt<resulting_size>{1};
+    temp -= sub_abs;
+  }
+
+  if (lhs.is_negative() && !rhs.is_negative() ||
+      !lhs.is_negative() && rhs.is_negative()) {
+    res.neg();
+  }
+
+  return res;
+}
+
+template <size_t size>
+template <size_t other_size>
+BigInt<size> BigInt<size>::operator/=(const BigInt<other_size>& rhs) {
+  BigInt<size> res{0};
+  auto temp = BigInt<size>{*this}.abs();
+  auto sub_abs = rhs.abs();
+
+  while ((temp <=> rhs) > 0) {
+    res += BigInt<size>{1};
+    temp -= sub_abs;
+  }
+
+  if (negative && !rhs.is_negative() || !negative && rhs.is_negative()) {
+    res.neg();
+  }
+
+  repr = std::move(res.repr);
+  negative = res.negative;
+
+  return *this;
 }
 
 template <size_t lhs_size, size_t rhs_size>
@@ -343,4 +505,14 @@ auto operator<=>(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   }
 
   return order;
+}
+
+template <size_t size> BigInt<size> BigInt<size>::factorial() const {
+  BigInt<size> res{1};
+
+  for (BigInt<size> i{1}; (i <=> *this) <= 0; i += BigInt<size>{1}) {
+    res *= i;
+  }
+
+  return res;
 }

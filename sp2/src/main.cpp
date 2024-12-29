@@ -42,14 +42,61 @@ void print_sums() {
 
 int main(int argc, char* argv[]) {
   print_sums();
-  BigInt<3> a{500};
-  BigInt<3> b{500};
-  std::cout << (a << 3) << std::endl;
-  try {
-    auto c = b + b;
-    std::cout << c << std::endl;
-  } catch (std::exception& e) {
-    std::println("{}", e.what());
+
+  {
+    BigInt<3> a{500};
+    BigInt<3> b{500};
+    std::cout << (a << 3) << std::endl;
+    try {
+      auto c = b + b;
+      std::cout << c << std::endl;
+    } catch (std::exception& e) {
+      std::println("{}", e.what());
+    }
   }
+
+  {
+    BigInt<10> a{89};
+    BigInt<5> b{18};
+    a += b;
+    std::cout << a << std::endl;
+    a -= b;
+    std::cout << a << std::endl;
+    a -= b * 2;
+    std::cout << a << std::endl;
+  }
+
+  {
+    BigInt<10> a{420};
+    BigInt<10> b{-69};
+    auto c = a * b;
+    std::cout << "a * b = " << c << std::endl;
+  }
+
+  {
+    BigInt<10> a{420};
+    BigInt<10> b{-69};
+    std::cout << "a *= b = " << (a *= b) << std::endl;
+  }
+
+  {
+    BigInt<15> a{78654};
+    BigInt<10> b{573};
+
+    std::cout << "a / b = " << a / b << std::endl;
+  }
+
+  {
+    BigInt<15> a{-78654};
+    BigInt<10> b{573};
+
+    std::cout << "a /= b | a = " << (a /= b) << std::endl;
+  }
+
+  {
+    BigInt<1000> a{20};
+    std::cout << a.factorial() << std::endl;
+  }
+
   return 0;
 }
