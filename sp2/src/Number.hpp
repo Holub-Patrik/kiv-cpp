@@ -77,7 +77,6 @@ MP::Num<N>::Num(const char* input_str)
     // weird
     if (a < '0' || a > '9') {
       if (a == '-') {
-        negative = true;
         length++;
         continue;
       }
@@ -93,14 +92,12 @@ MP::Num<N>::Num(const char* input_str)
         std::format("Number given wasn't a number. Offending: {}", wrong_char));
   }
 
-  // fix here, negative number check;
   int repr_index = 0;
-  int end_cond = 0;
-  if (negative) {
-    end_cond = 1;
-  }
-
-  for (int i = length; i != end_cond; --i) {
+  for (int i = length; i--;) {
+    if (input_str[i] == '-') {
+      negative = true;
+      break;
+    }
     _at(repr_index) = input_str[i] - '0';
     ++repr_index;
   }
