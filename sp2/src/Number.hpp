@@ -1,69 +1,85 @@
-#include <algorithm>
-#include <cmath>
-#include <compare>
-#include <concepts>
-#include <cstddef>
+#include "NumberDef.hpp"
+#include "NumberEx.hpp"
+
 #include <iostream>
-#include <print>
 #include <sstream>
-#include <string>
-#include <utility>
-#include <vector>
 
-#include "BigIntDef.hpp"
-#include "BigNumberException.hpp"
-
-template <typename T> consteval T template_max(const T& lhs, const T& rhs) {
-  if (lhs < rhs) {
-    return lhs;
+template <int N, int M> consteval int template_max() {
+  // if either one in unlimited, return should be unlimited
+  if (N < 0 || M < 0) {
+    return MP::Unlimited;
   } else {
-    return rhs;
+    return N > M ? N : M;
   }
 }
 
-template <typename T>
-concept TrivialIntegral =
-    std::integral<T> && requires(T t) { t >= 0 && t < 10; };
+template <int N>
+const MP::repr_type MP::Num<N>::operator[](size_t index) const {
+  return _at(index);
+}
 
-template <size_t size>
-BigInt<size>::BigInt(long num) : repr(std::vector<short>{}) {
+template <int N> MP::repr_type& MP::Num<N>::operator[](size_t index) {
+  return _at(index);
+}
+
+template <int N> const MP::repr_type MP::Num<N>::_at(size_t index) const {
+  if (index >= repr.size()) {
+    throw MP::Exception<N>("Array out of bounds access");
+  }
+
+  return repr[index];
+}
+
+template <int N> MP::repr_type& MP::Num<N>::_at(size_t index) {
+  if (index >= repr.size()) {
+    throw MP::Exception<N>("Array out of bounds access");
+  }
+
+  return repr[index];
+}
+
+// inline due to clang warning and auto fix
+template <> inline MP::repr_type& MP::Num<MP::Unlimited>::_at(size_t index) {
+  if (index >= repr.size()) {
+    repr.resize(index / 10 + 10, 0);
+  }
+
+  return repr[index];
+}
+
+template <int N>
+MP::Num<N>::Num(long num) : repr(typename stl_type<N>::Type{0}) {
   negative = num < 0;
   if (negative) {
     num *= -1;
   }
 
   for (int i = 0; num > 0; ++i) {
-    if (i >= size) {
-      throw BigNumberException<size>(
-          "Number too large for specified template size");
+    if (N >= 0 && i >= N) {
+      throw MP::Exception<N>("Number too large for specified template size");
     }
-    repr.push_back(num % 10);
+    _at(i) = num % 10;
     num /= 10;
   }
 }
 
-template <size_t size>
-BigInt<size>::BigInt(std::vector<short>&& repr) : repr(repr) {}
-
 // move constructor
-template <size_t size>
-BigInt<size>::BigInt(BigInt<size>&& other) noexcept
+template <int N>
+MP::Num<N>::Num(Num<N>&& other) noexcept
     : repr(std::move(other.repr)), negative(other.negative) {}
 
 // copy constructor
-template <size_t size>
-BigInt<size>::BigInt(const BigInt<size>& other) noexcept {
+template <int N> MP::Num<N>::Num(const Num<N>& other) noexcept {
   negative = other.negative;
   repr = other.repr;
 }
 
 // copy assignment
-template <size_t size>
-BigInt<size>& BigInt<size>::operator=(const BigInt<size>& other) {
+template <int N> MP::Num<N>& MP::Num<N>::operator=(const Num<N>& other) {
   if (this == &other)
     return *this;
 
-  BigInt<size> temp(other);
+  MP::Num<N> temp(other);
   std::swap(repr, temp.repr);
   negative = temp.negative;
 
@@ -71,15 +87,14 @@ BigInt<size>& BigInt<size>::operator=(const BigInt<size>& other) {
 }
 
 // move assignment
-template <size_t size>
-BigInt<size>& BigInt<size>::operator=(BigInt<size>&& other) noexcept {
-  BigInt<size> temp(std::move(other));
+template <int N> MP::Num<N>& MP::Num<N>::operator=(Num<N>&& other) noexcept {
+  MP::Num<N> temp(std::move(other));
   std::swap(repr, temp.repr);
   negative = temp.negative;
   return *this;
 }
 
-template <size_t size> BigInt<size>::operator std::string() const {
+template <int N> MP::Num<N>::operator std::string() const {
   std::ostringstream s;
   if (negative) {
     s << "-";
@@ -89,7 +104,7 @@ template <size_t size> BigInt<size>::operator std::string() const {
   std::for_each(repr.rbegin(), repr.rend(), [&s, &filler](auto elem) {
     if (elem != 0 || !filler) {
       s << elem;
-      s << " ";
+      // s << " ";
       filler = false;
     }
   });
@@ -101,53 +116,26 @@ template <size_t size> BigInt<size>::operator std::string() const {
   return std::string{s.str()};
 }
 
-template <size_t size>
-std::ostream& operator<<(std::ostream& os, const BigInt<size>& num) {
+template <int N>
+std::ostream& operator<<(std::ostream& os, const MP::Num<N>& num) {
   os << static_cast<std::string>(num);
   return os;
 }
 
-template <size_t size>
-const short BigInt<size>::operator[](size_t index) const {
-  if (index < 0 || index >= size) {
-    throw BigNumberException<size>("Array out of bounds access", *this);
-  }
-
-  return repr[index];
+template <int N> const short MP::Num<N>::last() const {
+  return repr[repr.size - 1];
 }
 
-template <size_t size> short& BigInt<size>::operator[](size_t index) {
-  if (index < 0 || index >= size) {
-    throw BigNumberException<size>("Array out of bounds access", *this);
-  }
-
-  if (repr.size() < size) {
-    repr.resize(repr.size() + 10);
-  }
-
-  return repr[index];
-}
-
-template <size_t size> const short BigInt<size>::last() const {
-  if (repr.size() < size) {
-    return repr[repr.size() - 1];
-  } else {
-    return repr[size - 1];
-  }
-}
-
-template <size_t size>
-BigInt<size>& BigInt<size>::operator<<(size_t shift_amount) {
+template <int N> MP::Num<N>& MP::Num<N>::operator<<(size_t shift_amount) {
   bool except = false;
-
-  for (int i = size - 1; i >= size - static_cast<int>(shift_amount) - size;
-       --i) {
+  const size_t cont_size = repr.size();
+  for (int i = cont_size - 1; i >= cont_size - shift_amount - 1; --i) {
     if (repr[i]) {
       except = true;
     }
   }
 
-  for (int i = size - 1; i >= static_cast<int>(shift_amount); --i) {
+  for (int i = cont_size - 1; i >= static_cast<int>(shift_amount); --i) {
     repr[i] = repr[i - shift_amount];
   }
 
@@ -156,15 +144,15 @@ BigInt<size>& BigInt<size>::operator<<(size_t shift_amount) {
   }
 
   if (except) {
-    throw BigNumberException<size>("Overflow [<<]", *this);
+    throw MP::Exception<N>("Overflow [<<]", *this);
   }
 
   return *this;
 }
 
-template <size_t size>
-template <size_t other_size>
-BigInt<size> BigInt<size>::operator+=(const BigInt<other_size>& rhs) {
+template <int N>
+template <int M>
+MP::Num<N> MP::Num<N>::operator+=(const MP::Num<M>& rhs) {
 
   const bool lhs_neg = negative;
   const bool rhs_neg = rhs.is_negative();
@@ -184,34 +172,24 @@ BigInt<size> BigInt<size>::operator+=(const BigInt<other_size>& rhs) {
 
   short carry = 0;
 
-  for (size_t i = 0; i < size; ++i) {
-    const short lhs_num = i < size ? repr[i] : 0;
-    const short rhs_num = i < other_size ? rhs[i] : 0;
+  for (size_t i = 0; i < repr.size(); ++i) {
+    const short lhs_num = i < repr.size() ? repr[i] : 0;
+    const short rhs_num = i < rhs.size() ? rhs[i] : 0;
     const short temp = lhs_num + rhs_num + carry;
     repr[i] = temp % 10;
     carry = temp / 10;
   }
 
   if (carry) {
-    throw BigNumberException<size>("Overflow [+=](carry)", *this);
-  }
-
-  if (other_size > size) {
-    for (size_t i = size; i < other_size; i++) {
-      if (rhs[i]) {
-        throw BigNumberException<size>("Overflow [+=](number too large)",
-                                       *this);
-      }
-    }
+    throw MP::Exception<N>("Overflow [+=](carry)", *this);
   }
 
   return *this;
 }
 
-template <size_t lhs_size, size_t rhs_size>
-BigInt<template_max(lhs_size, rhs_size)>
-operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
-  constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
+template <int N, int M>
+MP::Num<template_max<N, M>()> operator+(const MP::Num<N>& lhs,
+                                        const MP::Num<M>& rhs) {
 
   // addition implementation works only for positive numbers
   // so I just transform everything into addition/subtraction of positive
@@ -232,33 +210,34 @@ operator+(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
     return -(-lhs + -rhs);
   }
 
-  BigInt<resulting_size> res;
+  MP::Num<template_max<N, M>()> res;
+  const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
 
   short carry = 0;
-  for (size_t i = 0; i < resulting_size; ++i) {
-    const short lhs_num = i < lhs_size ? lhs[i] : 0;
-    const short rhs_num = i < rhs_size ? rhs[i] : 0;
+  for (size_t i = 0; i < larger; ++i) {
+    const short lhs_num = i < lhs.size() ? lhs[i] : 0;
+    const short rhs_num = i < rhs.size() ? rhs[i] : 0;
     const short temp = lhs_num + rhs_num + carry;
     res[i] = temp % 10;
     carry = temp / 10;
   }
 
   if (carry) {
-    throw BigNumberException<resulting_size>("Overflow [+](carry)", res);
+    throw MP::Exception<template_max<N, M>()>("Overflow [+](carry)", res);
   }
 
   return res;
 }
 
-template <size_t size>
-template <size_t other_size>
-BigInt<size> BigInt<size>::operator-=(const BigInt<other_size>& rhs) {
+template <int N>
+template <int M>
+MP::Num<N> MP::Num<N>::operator-=(const MP::Num<M>& rhs) {
   const bool lhs_neg = negative;
   const bool rhs_neg = rhs.is_negative();
   const auto lr_cmp = *this <=> rhs;
 
   if (lr_cmp == 0) {
-    return BigInt<size>{0};
+    return MP::Num<N>{0};
   }
 
   if (!lhs_neg && rhs_neg) {
@@ -274,9 +253,9 @@ BigInt<size> BigInt<size>::operator-=(const BigInt<other_size>& rhs) {
   }
 
   short carry = 0;
-  for (size_t i = 0; i < size; ++i) {
-    const short lhs_num = i < size ? repr[i] : 0;
-    const short rhs_num = i < other_size ? rhs[i] + carry : 0;
+  for (size_t i = 0; i < repr.size(); ++i) {
+    const short lhs_num = i < repr.size() ? repr[i] : 0;
+    const short rhs_num = i < rhs.size() ? rhs[i] + carry : 0;
     short temp;
 
     if (lr_cmp < 0) {
@@ -299,23 +278,21 @@ BigInt<size> BigInt<size>::operator-=(const BigInt<other_size>& rhs) {
   }
 
   if (carry) {
-    throw BigNumberException<size>("Overflow [-=](carry)", *this);
+    throw MP::Exception<N>("Overflow [-=](carry)", *this);
   }
 
   return *this;
 }
 
-template <size_t size> BigInt<size> operator-(const BigInt<size>& num) {
-  auto new_num = BigInt<size>(num);
+template <int N> MP::Num<N> operator-(const MP::Num<N>& num) {
+  auto new_num = MP::Num<N>(num);
   new_num.neg();
   return new_num;
 }
 
-template <size_t lhs_size, size_t rhs_size>
-BigInt<template_max(lhs_size, rhs_size)>
-operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
-  constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
-
+template <int N, int M>
+MP::Num<template_max<N, M>()> operator-(const MP::Num<N>& lhs,
+                                        const MP::Num<M>& rhs) {
   // subtraction implementation works only for positive numbers
   // so I created these rules to convert everything into addition/subtraction of
   // positive numbers
@@ -324,7 +301,7 @@ operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   const auto lr_cmp = lhs <=> rhs;
 
   if ((lhs <=> rhs) == 0) {
-    return BigInt<resulting_size>{0};
+    return MP::Num<template_max<N, M>()>{0};
   }
 
   if (!lhs_neg && !rhs_neg) {
@@ -345,11 +322,13 @@ operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
     return -(-lhs - -rhs);
   }
 
-  BigInt<resulting_size> res;
+  MP::Num<template_max<N, M>()> res;
+  const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
+
   short carry = 0;
-  for (size_t i = 0; i < resulting_size; ++i) {
-    const short lhs_num = i < lhs.get_repr().size() ? lhs[i] : 0;
-    const short rhs_num = i < rhs.get_repr().size() ? rhs[i] + carry : 0;
+  for (size_t i = 0; i < larger; ++i) {
+    const short lhs_num = i < lhs.size() ? lhs[i] : 0;
+    const short rhs_num = i < rhs.size() ? rhs[i] + carry : 0;
     if (lhs_num - rhs_num >= 0) {
       res[i] = lhs_num - rhs_num;
       carry = 0;
@@ -360,39 +339,38 @@ operator-(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   }
 
   if (carry) {
-    throw BigNumberException<resulting_size>("Oveflow [-](carry)", res);
+    throw MP::Exception<template_max<N, M>()>("Oveflow [-](carry)", res);
   }
 
   return res;
 }
 
-template <size_t size>
-BigInt<size> operator*(const BigInt<size>& num,
-                       const TrivialIntegral auto mul) {
-  BigInt<size> res;
+template <int N>
+MP::Num<N> operator*(const MP::Num<N>& num, const MP::trivial auto mul) {
+  MP::Num<N> res;
+
   short carry = 0;
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < num.size(); ++i) {
     const short temp = num[i] * mul + carry;
     res[i] = temp % 10;
     carry = temp / 10;
   }
 
   if (carry) {
-    throw BigNumberException<size>("Overflow [*](carry)", res);
+    throw MP::Exception<N>("Oveflow [*](carry)", res);
   }
 
   return res;
 }
 
-template <size_t lhs_size, size_t rhs_size>
-BigInt<template_max(lhs_size, rhs_size)>
-operator*(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
-  constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
-
-  BigInt<resulting_size> res_num{};
-  for (size_t i = 0; i < resulting_size; ++i) {
+template <int N, int M>
+MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
+                                        const MP::Num<M>& rhs) {
+  MP::Num<template_max<N, M>()> res_num{};
+  const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
+  for (size_t i = 0; i < larger; ++i) {
     auto temp_num = lhs * rhs[i];
-    if ((temp_num <=> BigInt<1>{0}) != 0) {
+    if ((temp_num <=> MP::Num<1>{0}) != 0) {
       res_num += temp_num << i;
     }
   }
@@ -405,13 +383,13 @@ operator*(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   return res_num;
 }
 
-template <size_t size>
-template <size_t other_size>
-BigInt<size> BigInt<size>::operator*=(const BigInt<other_size>& rhs) {
-  BigInt<size> res_num{};
-  for (size_t i = 0; i < size; ++i) {
+template <int N>
+template <int M>
+MP::Num<N> MP::Num<N>::operator*=(const MP::Num<M>& rhs) {
+  MP::Num<N> res_num{};
+  for (size_t i = 0; i < repr.size(); ++i) {
     auto temp_num = *this * rhs[i];
-    if ((temp_num <=> BigInt<1>{0}) != 0) {
+    if ((temp_num <=> MP::Num<1>{0}) != 0) {
       res_num += temp_num << i;
     }
   }
@@ -426,16 +404,16 @@ BigInt<size> BigInt<size>::operator*=(const BigInt<other_size>& rhs) {
   return *this;
 }
 
-template <size_t lhs_size, size_t rhs_size>
-BigInt<template_max(lhs_size, rhs_size)>
-operator/(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
-  constexpr const size_t resulting_size = template_max(lhs_size, rhs_size);
+template <int N, int M>
+MP::Num<template_max<N, M>()> operator/(const MP::Num<N>& lhs,
+                                        const MP::Num<M>& rhs) {
+  constexpr const size_t resulting_size = template_max<N, M>();
 
-  BigInt<resulting_size> res{0};
+  MP::Num<resulting_size> res{0};
   auto temp = lhs.abs();
   auto sub_abs = rhs.abs();
   while ((temp <=> rhs) > 0) {
-    res += BigInt<resulting_size>{1};
+    res += MP::Num<resulting_size>{1};
     temp -= sub_abs;
   }
 
@@ -447,15 +425,15 @@ operator/(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   return res;
 }
 
-template <size_t size>
-template <size_t other_size>
-BigInt<size> BigInt<size>::operator/=(const BigInt<other_size>& rhs) {
-  BigInt<size> res{0};
-  auto temp = BigInt<size>{*this}.abs();
+template <int N>
+template <int M>
+MP::Num<N> MP::Num<N>::operator/=(const MP::Num<M>& rhs) {
+  MP::Num<N> res{0};
+  auto temp = MP::Num<N>{*this}.abs();
   auto sub_abs = rhs.abs();
 
   while ((temp <=> rhs) > 0) {
-    res += BigInt<size>{1};
+    res += MP::Num<N>{1};
     temp -= sub_abs;
   }
 
@@ -469,8 +447,8 @@ BigInt<size> BigInt<size>::operator/=(const BigInt<other_size>& rhs) {
   return *this;
 }
 
-template <size_t lhs_size, size_t rhs_size>
-auto operator<=>(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
+template <int N, int M>
+auto operator<=>(const MP::Num<N>& lhs, const MP::Num<M>& rhs) {
   // check if one or the other is negative while the other isn't
   // this means later that checking just one is fine
   if (lhs.is_negative() && !rhs.is_negative()) {
@@ -483,14 +461,14 @@ auto operator<=>(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   size_t lhs_index = 0;
   size_t rhs_index = 0;
 
-  for (size_t i = lhs_size; i--;) {
+  for (size_t i = lhs.size(); i--;) {
     if (lhs[i]) {
       lhs_index = i;
       break;
     }
   }
 
-  for (size_t i = rhs_size; i--;) {
+  for (size_t i = rhs.size(); i--;) {
     if (rhs[i]) {
       rhs_index = i;
       break;
@@ -529,15 +507,14 @@ auto operator<=>(const BigInt<lhs_size>& lhs, const BigInt<rhs_size>& rhs) {
   return order;
 }
 
-template <size_t size> BigInt<size> BigInt<size>::factorial() const {
+template <int N> MP::Num<N> MP::Num<N>::factorial() const {
   if (negative) {
-    throw BigNumberException<size>(
-        "Factorial cannot be performed on negative numbers");
+    throw MP::Exception<N>("Factorial cannot be performed on negative numbers");
   }
 
-  BigInt<size> res{1};
+  MP::Num<N> res{1};
 
-  for (BigInt<size> i{1}; (i <=> *this) <= 0; i += BigInt<size>{1}) {
+  for (MP::Num<N> i{1}; (i <=> *this) <= 0; i += MP::Num<N>{1}) {
     res *= i;
   }
 
