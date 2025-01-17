@@ -1,6 +1,7 @@
 #include "NumberDef.hpp"
 #include "NumberEx.hpp"
 
+#include <format>
 #include <iostream>
 #include <sstream>
 
@@ -48,7 +49,7 @@ template <> inline MP::repr_type& MP::Num<MP::Unlimited>::_at(size_t index) {
 }
 
 template <int N>
-MP::Num<N>::Num(long num) : repr(typename stl_type<N>::Type{0}) {
+MP::Num<N>::Num(std::integral auto num) : repr(typename stl_type<N>::Type{0}) {
   negative = num < 0;
   if (negative) {
     num *= -1;
@@ -60,6 +61,69 @@ MP::Num<N>::Num(long num) : repr(typename stl_type<N>::Type{0}) {
     }
     _at(i) = num % 10;
     num /= 10;
+  }
+}
+
+template <int N>
+MP::Num<N>::Num(const char* input_str)
+    : repr(typename stl_type<N>::Type{0}), negative(false) {
+  // first find \0 character, from there go in reverse
+  int length = 0;
+  bool is_numeric = true;
+  char wrong_char = 0;
+
+  for (int i = 0; char a = input_str[i]; i++) {
+    // should be checked using a locale, but I know this won't be run somewhere
+    // weird
+    if (a < '0' || a > '9') {
+      if (a == '-') {
+        negative = true;
+        length++;
+        continue;
+      }
+      is_numeric = false;
+      wrong_char = a;
+      break;
+    }
+    length++;
+  }
+
+  if (!is_numeric) {
+    throw MP::Exception<N>(
+        std::format("Number given wasn't a number. Offending: {}", wrong_char));
+  }
+
+  // fix here, negative number check;
+  int repr_index = 0;
+  int end_cond = 0;
+  if (negative) {
+    end_cond = 1;
+  }
+
+  for (int i = length; i != end_cond; --i) {
+    _at(repr_index) = input_str[i] - '0';
+    ++repr_index;
+  }
+}
+
+template <int N>
+MP::Num<N>::Num(const std::string input_str)
+    : repr(typename stl_type<N>::Type{0}), negative(false) {
+  int repr_index = 0;
+  // just use a reverse iterator
+  for (auto it = input_str.rbegin(); it != input_str.rend(); it++) {
+    if (*it < '0' || *it > '9') {
+      if (*it == '-') {
+        negative = true;
+        break;
+      }
+
+      throw MP::Exception<N>(
+          std::format("Number given isn't a number. Offending: {}", *it));
+    }
+
+    _at(repr_index) = *it - '0';
+    repr_index++;
   }
 }
 

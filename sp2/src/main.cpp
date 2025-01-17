@@ -223,8 +223,10 @@ void print_tests() {
 int main(int argc, char* argv[]) {
   std::cout << "--- Addition and subtraction conversions ---" << std::endl;
   print_sums();
+
   std::cout << "--- Various other tests on static ---" << std::endl;
   print_tests();
+
   std::cout << "--- Unlimited (Prepare for trouble) ---" << std::endl;
   MP::Num<MP::Unlimited> a{100};
   std::cout << a << std::endl;
@@ -232,5 +234,33 @@ int main(int argc, char* argv[]) {
   std::cout << b << std::endl;
   auto c = a + b;
   std::cout << c << std::endl;
+
+  std::cout << "--- string instatiation ---" << std::endl;
+
+  const char* number_inter = "3458239";
+  const char* number_inter_neg = "-3458239";
+  MP::Num<10> num_char_l{number_inter};
+  MP::Num<MP::Unlimited> num_char_u{number_inter};
+  MP::Num<10> num_char_l_neg{number_inter_neg};
+  MP::Num<MP::Unlimited> num_char_u_neg{number_inter_neg};
+
+  std::cout << "Char* :" << number_inter << std::endl;
+  std::cout << "Char* Limited: " << num_char_l << std::endl;
+  std::cout << "Char* Unlimited: " << num_char_u << std::endl;
+  std::cout << "Char* Limited Neg: " << num_char_l_neg << std::endl;
+  std::cout << "Char* Unlimited Neg: " << num_char_u_neg << std::endl;
+
+  const std::string number_string = "7564849";
+  const std::string number_string_neg = "-7564849";
+  MP::Num<10> num_string_l{number_string};
+  MP::Num<MP::Unlimited> num_string_u{number_string};
+  MP::Num<10> num_string_l_neg{number_string_neg};
+  MP::Num<MP::Unlimited> num_string_u_neg{number_string_neg};
+  std::cout << "String :" << number_string << std::endl;
+  std::cout << "String Limited:" << num_string_l << std::endl;
+  std::cout << "String Unlimited:" << num_string_u << std::endl;
+  std::cout << "String Limited Neg:" << num_string_l_neg << std::endl;
+  std::cout << "String Unlimited Neg:" << num_string_u_neg << std::endl;
+
   return 0;
 }
