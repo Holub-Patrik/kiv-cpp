@@ -45,6 +45,7 @@ template <int N> class Num final {
 private:
   stl_type<N>::Type repr;
   bool negative;
+  repr_type _absorb;
 
 public:
   Num() : repr(typename stl_type<N>::Type{0}), negative(false) {}
@@ -96,11 +97,14 @@ public:
   // access primitives to be used internaly
   const repr_type _at(size_t index) const;
   repr_type& _at(size_t index);
+  const repr_type _safe_at(size_t index) const noexcept;
+  // this wouldn't make sense in N != Unlimited so it is left unimplemented
+  MP::repr_type& _safe_at(size_t index);
   // QOL operator overload
   const repr_type operator[](size_t index) const;
   repr_type& operator[](size_t index);
+  Num<N>& operator<<(const size_t);
   // string printing overloads so I can easily print
-  Num<N>& operator<<(size_t);
   operator std::string() const;
 
   // quick access to last element of the internal representation

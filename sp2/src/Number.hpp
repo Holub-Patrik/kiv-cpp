@@ -25,7 +25,7 @@ template <int N> MP::repr_type& MP::Num<N>::operator[](size_t index) {
 
 template <int N> const MP::repr_type MP::Num<N>::_at(size_t index) const {
   if (index >= repr.size()) {
-    throw MP::Exception<N>("Array out of bounds access");
+    throw MP::Exception<N>("Array out of bounds access", *this);
   }
 
   return repr[index];
@@ -33,7 +33,7 @@ template <int N> const MP::repr_type MP::Num<N>::_at(size_t index) const {
 
 template <int N> MP::repr_type& MP::Num<N>::_at(size_t index) {
   if (index >= repr.size()) {
-    throw MP::Exception<N>("Array out of bounds access");
+    throw MP::Exception<N>("Array out of bounds access", *this);
   }
 
   return repr[index];
@@ -41,6 +41,33 @@ template <int N> MP::repr_type& MP::Num<N>::_at(size_t index) {
 
 // inline due to clang warning and auto fix
 template <> inline MP::repr_type& MP::Num<MP::Unlimited>::_at(size_t index) {
+  if (index >= repr.size()) {
+    repr.resize(index / 10 + 10, 0);
+  }
+
+  return repr[index];
+}
+
+template <int N>
+const MP::repr_type MP::Num<N>::_safe_at(size_t index) const noexcept {
+  if (index >= repr.size())
+    return 0;
+
+  return repr[index];
+}
+
+template <int N> MP::repr_type& MP::Num<N>::_safe_at(size_t index) {
+  if (index >= repr.size()) {
+    _absorb = 0;
+    return _absorb;
+  }
+
+  return repr[index];
+}
+
+// inline due to clanf warning and auto fix
+template <>
+inline MP::repr_type& MP::Num<MP::Unlimited>::_safe_at(size_t index) {
   if (index >= repr.size()) {
     repr.resize(index / 10 + 10, 0);
   }
@@ -184,28 +211,56 @@ std::ostream& operator<<(std::ostream& os, const MP::Num<N>& num) {
 }
 
 template <int N> const short MP::Num<N>::last() const {
-  return repr[repr.size - 1];
+  return repr[repr.size() - 1];
 }
 
-template <int N> MP::Num<N>& MP::Num<N>::operator<<(size_t shift_amount) {
+template <int N> MP::Num<N>& MP::Num<N>::operator<<(const size_t shift_amount) {
   bool except = false;
+  if (shift_amount >= N) {
+    for (auto elem : repr) {
+      if (elem != 0) {
+        except = true;
+      }
+    }
+
+    repr = std::move(std::array<MP::repr_type, N>{0});
+    if (except) {
+      throw MP::Exception<N>("Overflow [<<]", *this);
+    }
+  }
+
   const size_t cont_size = repr.size();
-  for (int i = cont_size - 1; i >= cont_size - shift_amount - 1; --i) {
-    if (repr[i]) {
+  for (size_t i = cont_size - 1; i > cont_size - shift_amount - 1; --i) {
+    if (_at(i)) {
       except = true;
     }
   }
 
   for (int i = cont_size - 1; i >= static_cast<int>(shift_amount); --i) {
-    repr[i] = repr[i - shift_amount];
+    _at(i) = _at(i - shift_amount);
   }
 
   for (size_t i = 0; i < shift_amount; ++i) {
-    repr[i] = 0;
+    _at(i) = 0;
   }
 
   if (except) {
     throw MP::Exception<N>("Overflow [<<]", *this);
+  }
+
+  return *this;
+}
+
+template <>
+inline MP::Num<MP::Unlimited>&
+MP::Num<MP::Unlimited>::operator<<(const size_t shift_amount) {
+  // fix here
+  for (size_t i = repr.size() + shift_amount; i > shift_amount; --i) {
+    _at(i) = _at(i - shift_amount);
+  }
+
+  for (int i = 0; i < shift_amount; ++i) {
+    _at(i) = 0;
   }
 
   return *this;
@@ -232,12 +287,14 @@ MP::Num<N> MP::Num<N>::operator+=(const MP::Num<M>& rhs) {
   }
 
   short carry = 0;
+  // bug here with unlimited precision
+  const size_t larger = size() > rhs.size() ? size() : rhs.size();
 
-  for (size_t i = 0; i < repr.size(); ++i) {
-    const short lhs_num = i < repr.size() ? repr[i] : 0;
-    const short rhs_num = i < rhs.size() ? rhs[i] : 0;
+  for (size_t i = 0; i < larger; ++i) {
+    const short lhs_num = _safe_at(i);
+    const short rhs_num = rhs._safe_at(i);
     const short temp = lhs_num + rhs_num + carry;
-    repr[i] = temp % 10;
+    _at(i) = temp % 10;
     carry = temp / 10;
   }
 
@@ -276,8 +333,8 @@ MP::Num<template_max<N, M>()> operator+(const MP::Num<N>& lhs,
 
   short carry = 0;
   for (size_t i = 0; i < larger; ++i) {
-    const short lhs_num = i < lhs.size() ? lhs[i] : 0;
-    const short rhs_num = i < rhs.size() ? rhs[i] : 0;
+    const short lhs_num = lhs._safe_at(i);
+    const short rhs_num = rhs._safe_at(i);
     const short temp = lhs_num + rhs_num + carry;
     res[i] = temp % 10;
     carry = temp / 10;
@@ -314,9 +371,10 @@ MP::Num<N> MP::Num<N>::operator-=(const MP::Num<M>& rhs) {
   }
 
   short carry = 0;
-  for (size_t i = 0; i < repr.size(); ++i) {
-    const short lhs_num = i < repr.size() ? repr[i] : 0;
-    const short rhs_num = i < rhs.size() ? rhs[i] + carry : 0;
+  const size_t larger = size() > rhs.size() ? size() : rhs.size();
+  for (size_t i = 0; i < larger; ++i) {
+    const short lhs_num = i < _safe_at(i);
+    const short rhs_num = i < rhs._safe_at(i);
     short temp;
 
     if (lr_cmp < 0) {
@@ -326,10 +384,10 @@ MP::Num<N> MP::Num<N>::operator-=(const MP::Num<M>& rhs) {
     }
 
     if (temp >= 0) {
-      repr[i] = temp;
+      _at(i) = temp;
       carry = 0;
     } else {
-      repr[i] = temp + 10;
+      _at(i) = temp + 10;
       carry = 1;
     }
   }
@@ -388,8 +446,8 @@ MP::Num<template_max<N, M>()> operator-(const MP::Num<N>& lhs,
 
   short carry = 0;
   for (size_t i = 0; i < larger; ++i) {
-    const short lhs_num = i < lhs.size() ? lhs[i] : 0;
-    const short rhs_num = i < rhs.size() ? rhs[i] + carry : 0;
+    const short lhs_num = lhs._safe_at(i);
+    const short rhs_num = rhs._safe_at(i);
     if (lhs_num - rhs_num >= 0) {
       res[i] = lhs_num - rhs_num;
       carry = 0;

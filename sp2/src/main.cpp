@@ -1,9 +1,10 @@
+#include "Number.hpp"
+#include "NumberDef.hpp"
+#include "NumberEx.hpp"
 #include "Term.hpp"
-#include <array>
 #include <exception>
 #include <iostream>
 #include <print>
-#include <string>
 
 void print_sums() {
   std::cout << "-- Limited --" << std::endl;
@@ -164,7 +165,11 @@ void print_tests() {
   {
     MP::Num<3> a{500};
     MP::Num<3> b{500};
-    std::cout << (a << 3) << std::endl;
+    try {
+      std::cout << (a << 3) << std::endl;
+    } catch (MP::Exception<3> er) {
+      std::cout << "correct" << std::endl;
+    }
     std::cout << "-- exception handling ---" << std::endl;
     try {
       auto c = b + b;
@@ -228,13 +233,16 @@ int main(int argc, char* argv[]) {
   // std::cout << "--- Various other tests on static ---" << std::endl;
   // print_tests();
 
-  // std::cout << "--- Unlimited (Prepare for trouble) ---" << std::endl;
-  // MP::Num<MP::Unlimited> a{100};
-  // std::cout << a << std::endl;
-  // MP::Num<MP::Unlimited> b{200};
-  // std::cout << b << std::endl;
-  // auto c = a + b;
-  // std::cout << c << std::endl;
+  std::cout << "--- Unlimited (Prepare for trouble) ---" << std::endl;
+  MP::Num<MP::Unlimited> a{163};
+  std::cout << a << std::endl;
+  MP::Num<MP::Unlimited> b{292};
+  std::cout << b << std::endl;
+  auto c = a + b;
+  std::cout << c << std::endl;
+
+  auto d = a * b;
+  std::cout << d << std::endl;
 
   // std::cout << "--- string instatiation ---" << std::endl;
 
@@ -263,14 +271,8 @@ int main(int argc, char* argv[]) {
   // std::cout << "String Limited Neg:" << num_string_l_neg << std::endl;
   // std::cout << "String Unlimited Neg:" << num_string_u_neg << std::endl;
 
-  Term<10> t{};
-  std::array<std::string, 3> res{};
-  bool valid = t.split_eq(" 23176 + 026321 - 1265 ", res);
-  if (valid) {
-    for (auto elem : res) {
-      std::cout << elem << std::endl;
-    }
-  }
+  Term<MP::Unlimited> t{};
+  t.run();
 
   return 0;
 }
