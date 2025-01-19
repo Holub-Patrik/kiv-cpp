@@ -1,6 +1,7 @@
 #include "NumberDef.hpp"
 #include "NumberEx.hpp"
 
+#include <cstdint>
 #include <format>
 #include <iostream>
 #include <sstream>
@@ -65,7 +66,7 @@ template <int N> MP::repr_type& MP::Num<N>::_safe_at(size_t index) {
   return repr[index];
 }
 
-// inline due to clanf warning and auto fix
+// inline due to cland warning and auto fix
 template <>
 inline MP::repr_type& MP::Num<MP::Unlimited>::_safe_at(size_t index) {
   if (index >= repr.size()) {
@@ -76,28 +77,33 @@ inline MP::repr_type& MP::Num<MP::Unlimited>::_safe_at(size_t index) {
 }
 
 template <int N>
-MP::Num<N>::Num(std::integral auto num) : repr(typename stl_type<N>::Type{0}) {
-  negative = num < 0;
-  if (negative) {
-    num *= -1;
-  }
+MP::Num<N>::Num(const std::int32_t num) : repr(typename stl_type<N>::Type{0}) {
+  bool negative = num < 0;
 
-  for (int i = 0; num > 0; ++i) {
-    if (N >= 0 && i >= N) {
-      throw MP::Exception<N>("Number too large for specified template size");
-    }
-    _at(i) = num % 10;
-    num /= 10;
+  if (negative) {
+    repr[0] = -num;
+    neg();
+  } else {
+    repr[0] = num;
   }
 }
 
+template <int N> MP::Num<N>& MP::Num<N>::neg() noexcept {
+  for (auto it = repr.begin(); it != repr.end(); it++) {
+    *it = ~(*it); // flip all the parts
+  }
+
+  *this += MP::Num<N>{1};
+  return *this;
+}
+
 template <int N>
-MP::Num<N>::Num(const char* input_str)
-    : repr(typename stl_type<N>::Type{0}), negative(false) {
+MP::Num<N>::Num(const char* input_str) : repr(typename stl_type<N>::Type{0}) {
   // first find \0 character, from there go in reverse
   int length = 0;
   bool is_numeric = true;
   char wrong_char = 0;
+  bool negative = false;
 
   for (int i = 0; char a = input_str[i]; i++) {
     // should be checked using a locale, but I know this won't be run somewhere
@@ -132,7 +138,8 @@ MP::Num<N>::Num(const char* input_str)
 
 template <int N>
 MP::Num<N>::Num(const std::string input_str)
-    : repr(typename stl_type<N>::Type{0}), negative(false) {
+    : repr(typename stl_type<N>::Type{0}) {
+  bool negative = false;
   int repr_index = 0;
   // just use a reverse iterator
   for (auto it = input_str.rbegin(); it != input_str.rend(); it++) {
@@ -153,12 +160,10 @@ MP::Num<N>::Num(const std::string input_str)
 
 // move constructor
 template <int N>
-MP::Num<N>::Num(Num<N>&& other) noexcept
-    : repr(std::move(other.repr)), negative(other.negative) {}
+MP::Num<N>::Num(Num<N>&& other) noexcept : repr(std::move(other.repr)) {}
 
 // copy constructor
 template <int N> MP::Num<N>::Num(const Num<N>& other) noexcept {
-  negative = other.negative;
   repr = other.repr;
 }
 
@@ -169,7 +174,6 @@ template <int N> MP::Num<N>& MP::Num<N>::operator=(const Num<N>& other) {
 
   MP::Num<N> temp(other);
   std::swap(repr, temp.repr);
-  negative = temp.negative;
 
   return *this;
 }
@@ -178,28 +182,29 @@ template <int N> MP::Num<N>& MP::Num<N>::operator=(const Num<N>& other) {
 template <int N> MP::Num<N>& MP::Num<N>::operator=(Num<N>&& other) noexcept {
   MP::Num<N> temp(std::move(other));
   std::swap(repr, temp.repr);
-  negative = temp.negative;
   return *this;
 }
 
 template <int N> MP::Num<N>::operator std::string() const {
   std::ostringstream s;
-  if (negative) {
+  auto out_cp{*this};
+  if (out_cp.is_negative()) {
     s << "-";
+    out_cp.neg();
   }
-  bool filler = true;
 
-  std::for_each(repr.rbegin(), repr.rend(), [&s, &filler](auto elem) {
-    if (elem != 0 || !filler) {
-      s << elem;
-      // s << " ";
-      filler = false;
-    }
+  auto ten = MP::Num<N>{10};
+  std::vector<int> out_buf{};
+  while ((out_cp <=> MP::Num<N>{0}) > 0) {
+    auto char_num = out_cp / ten;
+    out_cp /= ten;
+    out_buf.push_back(char_num.get_repr()[0]);
+  }
+
+  std::for_each(out_buf.rbegin(), out_buf.rend(), [&s](auto elem) {
+    s << elem;
+    s << " ";
   });
-
-  if (filler) {
-    s << "0";
-  }
 
   return std::string{s.str()};
 }
@@ -269,38 +274,21 @@ MP::Num<MP::Unlimited>::operator<<(const size_t shift_amount) {
 template <int N>
 template <int M>
 MP::Num<N> MP::Num<N>::operator+=(const MP::Num<M>& rhs) {
-
-  const bool lhs_neg = negative;
-  const bool rhs_neg = rhs.is_negative();
-  const auto lr_cmp = *this <=> rhs;
-
-  if (!lhs_neg && rhs_neg) {
-    return *this -= -rhs;
-  }
-
-  if (lhs_neg && !rhs_neg) {
-    return (this->neg() -= rhs).neg();
-  }
-
-  if (lhs_neg && rhs_neg) {
-    return (this->neg() += -rhs).neg();
-  }
-
-  short carry = 0;
   // bug here with unlimited precision
-  const size_t larger = size() > rhs.size() ? size() : rhs.size();
 
-  for (size_t i = 0; i < larger; ++i) {
-    const short lhs_num = _safe_at(i);
-    const short rhs_num = rhs._safe_at(i);
-    const short temp = lhs_num + rhs_num + carry;
-    _at(i) = temp % 10;
-    carry = temp / 10;
+  std::uint64_t carry = 0;
+  for (size_t i = 0; i < repr.size(); ++i) {
+    const std::uint64_t lhs_num = static_cast<std::uint64_t>(_safe_at(i));
+    const std::uint64_t rhs_num = static_cast<std::uint64_t>(rhs._safe_at(i));
+    const std::uint64_t temp = lhs_num + rhs_num + carry;
+    carry = temp >> 32;
+    _at(i) = static_cast<std::uint32_t>(temp - (carry << 32));
   }
 
-  if (carry) {
-    throw MP::Exception<N>("Overflow [+=](carry)", *this);
-  }
+  // overflow exception has to be done better
+  // if (carry) {
+  //   throw MP::Exception<N>("Overflow [+=](carry)", *this);
+  // }
 
   return *this;
 }
@@ -309,40 +297,22 @@ template <int N, int M>
 MP::Num<template_max<N, M>()> operator+(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs) {
 
-  // addition implementation works only for positive numbers
-  // so I just transform everything into addition/subtraction of positive
-  // numbers
-  const bool lhs_neg = lhs.is_negative();
-  const bool rhs_neg = rhs.is_negative();
-  const auto lr_cmp = lhs <=> rhs;
-
-  if (!lhs_neg && rhs_neg) {
-    return lhs - -rhs;
-  }
-
-  if (lhs_neg && !rhs_neg) {
-    return -(-lhs - rhs);
-  }
-
-  if (lhs_neg && rhs_neg) {
-    return -(-lhs + -rhs);
-  }
-
   MP::Num<template_max<N, M>()> res;
   const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
 
-  short carry = 0;
+  std::uint64_t carry = 0;
   for (size_t i = 0; i < larger; ++i) {
-    const short lhs_num = lhs._safe_at(i);
-    const short rhs_num = rhs._safe_at(i);
-    const short temp = lhs_num + rhs_num + carry;
-    res[i] = temp % 10;
-    carry = temp / 10;
+    const std::uint64_t lhs_num = static_cast<uint64_t>(lhs._safe_at(i));
+    const std::uint64_t rhs_num = static_cast<uint64_t>(rhs._safe_at(i));
+    const std::uint64_t temp = lhs_num + rhs_num + carry;
+    carry = temp >> 32;                                   // get the carry
+    res[i] = static_cast<uint32_t>(temp - (carry << 32)); // subtract the carry
   }
 
-  if (carry) {
-    throw MP::Exception<template_max<N, M>()>("Overflow [+](carry)", res);
-  }
+  // overflow exception has to be done better
+  // if (carry) {
+  //   throw MP::Exception<template_max<N, M>()>("Overflow [+](carry)", res);
+  // }
 
   return res;
 }
@@ -350,56 +320,7 @@ MP::Num<template_max<N, M>()> operator+(const MP::Num<N>& lhs,
 template <int N>
 template <int M>
 MP::Num<N> MP::Num<N>::operator-=(const MP::Num<M>& rhs) {
-  const bool lhs_neg = negative;
-  const bool rhs_neg = rhs.is_negative();
-  const auto lr_cmp = *this <=> rhs;
-
-  if (lr_cmp == 0) {
-    return MP::Num<N>{0};
-  }
-
-  if (!lhs_neg && rhs_neg) {
-    return *this += -rhs;
-  }
-
-  if (lhs_neg && !rhs_neg) {
-    return ((*this).neg() += rhs).neg();
-  }
-
-  if (lhs_neg && rhs_neg) {
-    return ((*this).neg() -= -rhs).neg();
-  }
-
-  short carry = 0;
-  const size_t larger = size() > rhs.size() ? size() : rhs.size();
-  for (size_t i = 0; i < larger; ++i) {
-    const short lhs_num = i < _safe_at(i);
-    const short rhs_num = i < rhs._safe_at(i);
-    short temp;
-
-    if (lr_cmp < 0) {
-      temp = rhs_num - lhs_num;
-    } else {
-      temp = lhs_num - rhs_num;
-    }
-
-    if (temp >= 0) {
-      _at(i) = temp;
-      carry = 0;
-    } else {
-      _at(i) = temp + 10;
-      carry = 1;
-    }
-  }
-
-  if (lr_cmp < 0) {
-    negative = !negative;
-  }
-
-  if (carry) {
-    throw MP::Exception<N>("Overflow [-=](carry)", *this);
-  }
-
+  *this += (-rhs);
   return *this;
 }
 
@@ -412,113 +333,50 @@ template <int N> MP::Num<N> operator-(const MP::Num<N>& num) {
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator-(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs) {
-  // subtraction implementation works only for positive numbers
-  // so I created these rules to convert everything into addition/subtraction of
-  // positive numbers
-  const bool lhs_neg = lhs.is_negative();
-  const bool rhs_neg = rhs.is_negative();
-  const auto lr_cmp = lhs <=> rhs;
-
-  if ((lhs <=> rhs) == 0) {
-    return MP::Num<template_max<N, M>()>{0};
-  }
-
-  if (!lhs_neg && !rhs_neg) {
-    if ((lr_cmp) < 0) {
-      return -(rhs - lhs);
-    }
-  }
-
-  if (!lhs_neg && rhs_neg) {
-    return lhs + -rhs;
-  }
-
-  if (lhs_neg && !rhs_neg) {
-    return -(-lhs + rhs);
-  }
-
-  if (lhs_neg && rhs_neg) {
-    return -(-lhs - -rhs);
-  }
-
-  MP::Num<template_max<N, M>()> res;
-  const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
-
-  short carry = 0;
-  for (size_t i = 0; i < larger; ++i) {
-    const short lhs_num = lhs._safe_at(i);
-    const short rhs_num = rhs._safe_at(i);
-    if (lhs_num - rhs_num >= 0) {
-      res[i] = lhs_num - rhs_num;
-      carry = 0;
-    } else {
-      res[i] = (lhs_num + 10) - rhs_num;
-      carry = 1;
-    }
-  }
-
-  if (carry) {
-    throw MP::Exception<template_max<N, M>()>("Oveflow [-](carry)", res);
-  }
-
-  return res;
-}
-
-template <int N>
-MP::Num<N> operator*(const MP::Num<N>& num, const MP::trivial auto mul) {
-  MP::Num<N> res;
-
-  short carry = 0;
-  for (size_t i = 0; i < num.size(); ++i) {
-    const short temp = num[i] * mul + carry;
-    res[i] = temp % 10;
-    carry = temp / 10;
-  }
-
-  if (carry) {
-    throw MP::Exception<N>("Oveflow [*](carry)", res);
-  }
-
-  return res;
+  return lhs + (-rhs);
 }
 
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs) {
-  MP::Num<template_max<N, M>()> res_num{};
+  MP::Num<template_max<N, M>()> res{};
   const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
+
+  std::uint64_t carry = 0;
   for (size_t i = 0; i < larger; ++i) {
-    auto temp_num = lhs * rhs[i];
-    if ((temp_num <=> MP::Num<1>{0}) != 0) {
-      res_num += temp_num << i;
-    }
+    const std::uint64_t lhs_num = static_cast<uint64_t>(lhs._safe_at(i));
+    const std::uint64_t rhs_num = static_cast<uint64_t>(rhs._safe_at(i));
+    const std::uint64_t temp = lhs_num * rhs_num + carry;
+    carry = temp >> 32;
+    res[i] = static_cast<std::uint32_t>(temp - (carry << 32));
   }
 
-  if (lhs.is_negative() && !rhs.is_negative() ||
-      !lhs.is_negative() && rhs.is_negative()) {
-    res_num.neg();
-  }
+  // overflow exception has to be done better
+  // if (carry) {
+  //   throw MP::Exception<template_max<N, M>()>("Overflow [*](carry)", res);
+  // }
 
-  return res_num;
+  return res;
 }
 
 template <int N>
 template <int M>
 MP::Num<N> MP::Num<N>::operator*=(const MP::Num<M>& rhs) {
-  MP::Num<N> res_num{};
-  for (size_t i = 0; i < repr.size(); ++i) {
-    auto temp_num = *this * rhs[i];
-    if ((temp_num <=> MP::Num<1>{0}) != 0) {
-      res_num += temp_num << i;
-    }
+  const size_t larger = size() > rhs.size() ? size() : rhs.size();
+
+  std::uint64_t carry = 0;
+  for (size_t i = 0; i < larger; ++i) {
+    const std::uint64_t lhs_num = static_cast<std::uint64_t>(_safe_at(i));
+    const std::uint64_t rhs_num = static_cast<std::uint64_t>(rhs._safe_at(i));
+    const std::uint64_t temp = lhs_num * rhs_num + carry;
+    carry = temp >> 32;
+    _at(i) = static_cast<std::uint32_t>(temp - (carry << 32));
   }
 
-  if (negative && !rhs.is_negative() || !negative && rhs.is_negative()) {
-    res_num.neg();
-  }
-
-  repr = std::move(res_num.repr);
-  negative = res_num.negative;
+  // overflow exception has to be done better
+  // if (carry) {
+  //   throw MP::Exception<N>("Overflow [*=](carry)", *this);
+  // }
 
   return *this;
 }
@@ -531,7 +389,7 @@ MP::Num<template_max<N, M>()> operator/(const MP::Num<N>& lhs,
   MP::Num<resulting_size> res{0};
   auto temp = lhs.abs();
   auto sub_abs = rhs.abs();
-  while ((temp <=> rhs) > 0) {
+  while ((temp <=> rhs) >= 0) {
     res += MP::Num<resulting_size>{1};
     temp -= sub_abs;
   }
@@ -556,12 +414,12 @@ MP::Num<N> MP::Num<N>::operator/=(const MP::Num<M>& rhs) {
     temp -= sub_abs;
   }
 
-  if (negative && !rhs.is_negative() || !negative && rhs.is_negative()) {
+  repr = std::move(res.repr);
+
+  if (is_negative() && !rhs.is_negative() ||
+      !is_negative() && rhs.is_negative()) {
     res.neg();
   }
-
-  repr = std::move(res.repr);
-  negative = res.negative;
 
   return *this;
 }
@@ -627,7 +485,7 @@ auto operator<=>(const MP::Num<N>& lhs, const MP::Num<M>& rhs) {
 }
 
 template <int N> MP::Num<N> MP::Num<N>::factorial() const {
-  if (negative) {
+  if (is_negative()) {
     throw MP::Exception<N>("Factorial cannot be performed on negative numbers");
   }
 

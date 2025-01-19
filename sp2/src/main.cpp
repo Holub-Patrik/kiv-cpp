@@ -9,10 +9,16 @@
 void print_sums() {
   std::cout << "-- Limited --" << std::endl;
   {
-    MP::Num<10> pos_a{89};
-    MP::Num<11> pos_b{18};
+    MP::Num<10> pos_a{21};
+    MP::Num<11> pos_b{19};
     MP::Num<12> neg_a{-13};
     MP::Num<13> neg_b{-14};
+    // pos_a -= pos_b;
+    // std::cout << pos_a << " -= " << pos_b << " => " << pos_a << std::endl;
+    // pos_a += pos_b;
+    // std::cout << pos_a << " += " << pos_b << " => " << pos_a << std::endl;
+    auto c = MP::Num<10>{100} / MP::Num<10>{10};
+    std::cout << c << std::endl;
 
     std::cout << pos_a << " - " << pos_a << " = " << pos_a - pos_a << std::endl;
 
@@ -23,11 +29,12 @@ void print_sums() {
     std::cout << pos_a << " - " << pos_b << " = " << pos_a - pos_b << std::endl;
 
     // a - b => a - b
+    auto d = pos_b - pos_a;
+    std::cout << d << std::endl;
+    std::cout << "dbg" << std::endl;
     std::cout << pos_b << " - " << pos_a << " = " << pos_b - pos_a << std::endl;
 
     // a + (-b) => a - b
-    //
-    auto c = pos_a + neg_b;
     std::cout << pos_a << " + " << neg_b << " = " << pos_a + neg_b << std::endl;
 
     // a - (-b) => a + b
@@ -188,9 +195,6 @@ void print_tests() {
     std::cout << "-- -= --" << std::endl;
     a -= b;
     std::cout << a << std::endl;
-    std::cout << "-- -= b * 2 --" << std::endl;
-    a -= b * 2;
-    std::cout << a << std::endl;
   }
 
   {
@@ -227,8 +231,8 @@ void print_tests() {
 }
 
 int main(int argc, char* argv[]) {
-  // std::cout << "--- Addition and subtraction conversions ---" << std::endl;
-  // print_sums();
+  std::cout << "--- Addition and subtraction conversions ---" << std::endl;
+  print_sums();
 
   // std::cout << "--- Various other tests on static ---" << std::endl;
   // print_tests();
@@ -238,11 +242,34 @@ int main(int argc, char* argv[]) {
   std::cout << a << std::endl;
   MP::Num<MP::Unlimited> b{292};
   std::cout << b << std::endl;
-  auto c = a + b;
+  MP::Num<MP::Unlimited> c;
+  c = a + b;
+  std::cout << c << std::endl;
+  c = a - b; // wrong seems, that the carry is getting ignored
+  std::cout << c << std::endl;
+  c = b - a;
   std::cout << c << std::endl;
 
-  auto d = a * b;
-  std::cout << d << std::endl;
+  { // limited test works, interesting
+    std::cout << "-- quick limited test --" << std::endl;
+    MP::Num<10> test_1{163};
+    MP::Num<10> test_2{292};
+    std::cout << test_1 * test_2 << std::endl;
+    std::cout << test_2 * test_1 << std::endl;
+    std::cout << test_1 / test_2 << std::endl;
+    std::cout << test_2 / test_1 << std::endl;
+    std::cout << "-- end --" << std::endl;
+  }
+
+  // funnily enough, both are wrong
+  c = a * b; // different result from b*a
+  std::cout << c << std::endl;
+  c = b * a;
+  std::cout << c << std::endl;
+  c = a / b;
+  std::cout << c << std::endl;
+  c = b / a;
+  std::cout << c << std::endl;
 
   // std::cout << "--- string instatiation ---" << std::endl;
 
@@ -271,8 +298,12 @@ int main(int argc, char* argv[]) {
   // std::cout << "String Limited Neg:" << num_string_l_neg << std::endl;
   // std::cout << "String Unlimited Neg:" << num_string_u_neg << std::endl;
 
-  Term<MP::Unlimited> t{};
-  t.run();
+  // Term<MP::Unlimited> t{};
+  // t.run();
+
+  MP::Num<MP::Unlimited> err{10};
+  c = err.factorial();
+  std::cout << c << std::endl;
 
   return 0;
 }

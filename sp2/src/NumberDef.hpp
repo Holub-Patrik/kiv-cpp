@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <concepts>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -10,7 +11,7 @@ template <int N, int M> consteval int template_max();
 
 namespace MP {
 // typedef for internal representation type
-typedef unsigned int repr_type;
+typedef std::uint32_t repr_type;
 
 // used for simple multiplication aka N * [0-9]
 template <typename T>
@@ -44,15 +45,14 @@ template <> struct stl_type<Unlimited> {
 template <int N> class Num final {
 private:
   stl_type<N>::Type repr;
-  bool negative;
   repr_type _absorb;
 
 public:
-  Num() : repr(typename stl_type<N>::Type{0}), negative(false) {}
+  Num() : repr(typename stl_type<N>::Type{0}) {}
   ~Num() {}
 
   // QOL constructors
-  explicit Num(std::integral auto);
+  explicit Num(const std::int32_t);
   Num(stl_type<N>::Type&&);
   explicit Num(const char*);
   Num(const std::string);
@@ -70,18 +70,17 @@ public:
   // essentially getters for neccessary parts of the class
   const stl_type<N>::Type& get_repr() const noexcept { return repr; };
   std::size_t size() const noexcept { return repr.size(); };
-  const bool is_negative() const noexcept { return negative; }
+  const bool is_negative() const noexcept { return (last() >> 31) & 1; }
 
   // change the number from negative to positive
-  Num<N>& neg() noexcept {
-    negative = !negative;
-    return *this;
-  }
+  Num<N>& neg() noexcept;
 
   // return absolute number aka set negative to false
   Num<N> abs() const {
     auto res = Num<N>{*this};
-    res.negative = false;
+    if (res.is_negative()) {
+      res.neg();
+    }
     return res;
   }
 
