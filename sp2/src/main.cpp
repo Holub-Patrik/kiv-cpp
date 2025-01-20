@@ -13,11 +13,11 @@ void print_sums() {
     MP::Num<11> pos_b{19};
     MP::Num<12> neg_a{-13};
     MP::Num<13> neg_b{-14};
-    // pos_a -= pos_b;
-    // std::cout << pos_a << " -= " << pos_b << " => " << pos_a << std::endl;
-    // pos_a += pos_b;
-    // std::cout << pos_a << " += " << pos_b << " => " << pos_a << std::endl;
-    auto c = MP::Num<10>{100} / MP::Num<10>{10};
+    std::cout << pos_a << " -= " << pos_b << " => " << (pos_a -= pos_b)
+              << std::endl;
+    std::cout << pos_a << " += " << pos_b << " => " << (pos_a += pos_b)
+              << std::endl;
+    auto c = MP::Num<10>{2543} / MP::Num<10>{10};
     std::cout << c << std::endl;
 
     std::cout << pos_a << " - " << pos_a << " = " << pos_a - pos_a << std::endl;
@@ -29,9 +29,6 @@ void print_sums() {
     std::cout << pos_a << " - " << pos_b << " = " << pos_a - pos_b << std::endl;
 
     // a - b => a - b
-    auto d = pos_b - pos_a;
-    std::cout << d << std::endl;
-    std::cout << "dbg" << std::endl;
     std::cout << pos_b << " - " << pos_a << " = " << pos_b - pos_a << std::endl;
 
     // a + (-b) => a - b
@@ -231,11 +228,11 @@ void print_tests() {
 }
 
 int main(int argc, char* argv[]) {
-  std::cout << "--- Addition and subtraction conversions ---" << std::endl;
-  print_sums();
+  // std::cout << "--- Addition and subtraction conversions ---" << std::endl;
+  // print_sums();
 
-  // std::cout << "--- Various other tests on static ---" << std::endl;
-  // print_tests();
+  std::cout << "--- Various other tests on static ---" << std::endl;
+  print_tests();
 
   std::cout << "--- Unlimited (Prepare for trouble) ---" << std::endl;
   MP::Num<MP::Unlimited> a{163};

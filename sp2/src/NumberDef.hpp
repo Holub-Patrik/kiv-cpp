@@ -134,3 +134,5 @@ MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator/(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs);
+
+template <int N> MP::Num<N> mod_10(const MP::Num<N>& lhs);

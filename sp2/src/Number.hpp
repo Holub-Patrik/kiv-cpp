@@ -51,8 +51,15 @@ template <> inline MP::repr_type& MP::Num<MP::Unlimited>::_at(size_t index) {
 
 template <int N>
 const MP::repr_type MP::Num<N>::_safe_at(size_t index) const noexcept {
-  if (index >= repr.size())
-    return 0;
+  if (index >= repr.size()) {
+    MP::repr_type ret_val = 0;
+
+    if (is_negative()) {
+      ret_val = ~ret_val;
+    }
+
+    return ret_val;
+  }
 
   return repr[index];
 }
@@ -60,6 +67,10 @@ const MP::repr_type MP::Num<N>::_safe_at(size_t index) const noexcept {
 template <int N> MP::repr_type& MP::Num<N>::_safe_at(size_t index) {
   if (index >= repr.size()) {
     _absorb = 0;
+    if (is_negative()) {
+      _absorb = ~_absorb; // just negate as 2's complement of 0 is 0 and not the
+                          // max value I am looking for
+    }
     return _absorb;
   }
 
@@ -189,15 +200,19 @@ template <int N> MP::Num<N>::operator std::string() const {
   std::ostringstream s;
   auto out_cp{*this};
   if (out_cp.is_negative()) {
-    s << "-";
+    s << "- ";
     out_cp.neg();
+  }
+
+  if ((out_cp <=> MP::Num<N>{0}) == 0) {
+    s << 0;
   }
 
   auto ten = MP::Num<N>{10};
   std::vector<int> out_buf{};
   while ((out_cp <=> MP::Num<N>{0}) > 0) {
-    auto char_num = out_cp / ten;
-    out_cp /= ten;
+    auto char_num = mod_10<N>(out_cp);
+    out_cp = out_cp / ten;
     out_buf.push_back(char_num.get_repr()[0]);
   }
 
@@ -205,6 +220,11 @@ template <int N> MP::Num<N>::operator std::string() const {
     s << elem;
     s << " ";
   });
+
+  // for (auto it = out_cp.repr.rbegin(); it != out_cp.repr.rend(); it++) {
+  //   s << *it;
+  //   s << " ";
+  // }
 
   return std::string{s.str()};
 }
@@ -271,6 +291,11 @@ MP::Num<MP::Unlimited>::operator<<(const size_t shift_amount) {
   return *this;
 }
 
+template <int N> MP::Num<N> mod_10(const MP::Num<N>& lhs) {
+  auto c = lhs / MP::Num<N>{10};
+  return lhs - (c * MP::Num<N>{10});
+}
+
 template <int N>
 template <int M>
 MP::Num<N> MP::Num<N>::operator+=(const MP::Num<M>& rhs) {
@@ -305,7 +330,8 @@ MP::Num<template_max<N, M>()> operator+(const MP::Num<N>& lhs,
     const std::uint64_t lhs_num = static_cast<uint64_t>(lhs._safe_at(i));
     const std::uint64_t rhs_num = static_cast<uint64_t>(rhs._safe_at(i));
     const std::uint64_t temp = lhs_num + rhs_num + carry;
-    carry = temp >> 32;                                   // get the carry
+    carry = temp >> 32; // get the carry
+    const std::uint64_t test = temp - (carry << 32);
     res[i] = static_cast<uint32_t>(temp - (carry << 32)); // subtract the carry
   }
 
