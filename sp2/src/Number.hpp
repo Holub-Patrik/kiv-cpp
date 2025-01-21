@@ -1,6 +1,7 @@
 #include "NumberDef.hpp"
 #include "NumberEx.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <format>
 #include <iostream>
@@ -239,35 +240,47 @@ template <int N> const short MP::Num<N>::last() const {
   return repr[repr.size() - 1];
 }
 
+/*
+ * Byt shift by shift_amount bits
+ */
 template <int N> MP::Num<N>& MP::Num<N>::operator<<(const size_t shift_amount) {
   bool except = false;
-  if (shift_amount >= N) {
-    for (auto elem : repr) {
-      if (elem != 0) {
-        except = true;
-      }
-    }
 
-    repr = std::move(std::array<MP::repr_type, N>{0});
-    if (except) {
-      throw MP::Exception<N>("Overflow [<<]", *this);
-    }
-  }
+  // transform shift amount to vals * 32 + bits
+  const int vals = shift_amount / 32; // amount of 32 bit values during shift
+  const int bits = shift_amount % 32; // amount of bits during shift
 
-  const size_t cont_size = repr.size();
-  for (size_t i = cont_size - 1; i > cont_size - shift_amount - 1; --i) {
-    if (_at(i)) {
+  auto rev_it = repr.rbegin();
+  for (int i = 0; i < vals; ++i) {
+    const auto test_val = *rev_it;
+    if (test_val != 0) {
       except = true;
     }
+    ++rev_it;
   }
 
-  for (int i = cont_size - 1; i >= static_cast<int>(shift_amount); --i) {
-    _at(i) = _at(i - shift_amount);
+  const auto test_val = *rev_it;
+  auto check_bits_val = (*rev_it) >> (32 - bits);
+  if (check_bits_val) {
+    except = true;
   }
 
-  for (size_t i = 0; i < shift_amount; ++i) {
-    _at(i) = 0;
+  for (int i = repr.size() - 1; i > vals; --i) {
+    repr[i] = repr[i - vals];
   }
+
+  for (int i = repr.size(); i > 1; --i) {
+    std::uint64_t temp = static_cast<std::uint64_t>(repr[i]);
+    std::uint64_t temp_next = static_cast<std::uint64_t>(repr[i - 1]);
+
+    temp <<= bits;
+    temp_next >>= 32 - bits;
+    temp += temp_next;
+
+    repr[i] = static_cast<std::uint32_t>(temp);
+  }
+  // last operation not done by the loop;
+  repr[0] <<= bits;
 
   if (except) {
     throw MP::Exception<N>("Overflow [<<]", *this);
@@ -365,22 +378,42 @@ MP::Num<template_max<N, M>()> operator-(const MP::Num<N>& lhs,
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs) {
-  MP::Num<template_max<N, M>()> res{};
+  MP::Num<template_max<N, M>()> res{0};
   const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
+  // take absolute values, since I do not know what will happen if I don't
+  // and I do not want to mess with that logic
+  auto lhs_abs = lhs.abs();
+  auto rhs_abs = rhs.abs();
 
-  std::uint64_t carry = 0;
-  for (size_t i = 0; i < larger; ++i) {
-    const std::uint64_t lhs_num = static_cast<uint64_t>(lhs._safe_at(i));
-    const std::uint64_t rhs_num = static_cast<uint64_t>(rhs._safe_at(i));
-    const std::uint64_t temp = lhs_num * rhs_num + carry;
-    carry = temp >> 32;
-    res[i] = static_cast<std::uint32_t>(temp - (carry << 32));
+  // n^2 algorithm, since I am dumb. To be honest, c++ templates and
+  // thinking about this logic was a bit too much for me
+  std::uint64_t carry;
+  for (size_t i = 0; i < lhs_abs.size(); ++i) {
+    carry = 0;
+    const std::uint64_t lhs_num =
+        static_cast<std::uint64_t>(lhs_abs._safe_at(i));
+    MP::Num<M> temp_num{0};
+
+    for (size_t j = 0; j < rhs_abs.size(); ++j) {
+      const std::uint64_t rhs_num =
+          static_cast<std::uint64_t>(rhs_abs._safe_at(j));
+      const std::uint64_t temp = lhs_num * rhs_num + carry;
+      carry = temp >> 32;
+      temp_num[j] = static_cast<std::uint32_t>(temp - (carry << 32));
+    }
+    const auto test = temp_num << (i * 32);
+    res += (temp_num << (i * 32));
+  }
+
+  if (lhs.is_negative() && !rhs.is_negative() ||
+      rhs.is_negative() && !lhs.is_negative()) {
+    res.neg();
   }
 
   // overflow exception has to be done better
-  // if (carry) {
-  //   throw MP::Exception<template_max<N, M>()>("Overflow [*](carry)", res);
-  // }
+  if (carry) {
+    throw MP::Exception<template_max<N, M>()>("Overflow [*](carry)", res);
+  }
 
   return res;
 }
@@ -388,22 +421,43 @@ MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
 template <int N>
 template <int M>
 MP::Num<N> MP::Num<N>::operator*=(const MP::Num<M>& rhs) {
-  const size_t larger = size() > rhs.size() ? size() : rhs.size();
+  MP::Num<N> res{0};
+  // take absolute values, since I do not know what will happen if I don't
+  // and I do not want to mess with that logic
+  auto lhs_abs = abs();
+  auto rhs_abs = rhs.abs();
 
-  std::uint64_t carry = 0;
-  for (size_t i = 0; i < larger; ++i) {
-    const std::uint64_t lhs_num = static_cast<std::uint64_t>(_safe_at(i));
-    const std::uint64_t rhs_num = static_cast<std::uint64_t>(rhs._safe_at(i));
-    const std::uint64_t temp = lhs_num * rhs_num + carry;
-    carry = temp >> 32;
-    _at(i) = static_cast<std::uint32_t>(temp - (carry << 32));
+  // n^2 algorithm, since I am dumb. To be honest, c++ templates and
+  // thinking about this logic was a bit too much for me
+  std::uint64_t carry;
+  for (size_t i = 0; i < lhs_abs.size(); ++i) {
+    carry = 0;
+    const std::uint64_t lhs_num =
+        static_cast<std::uint64_t>(lhs_abs._safe_at(i));
+    MP::Num<M> temp_num{0};
+
+    for (size_t j = 0; j < rhs_abs.size(); ++j) {
+      const std::uint64_t rhs_num =
+          static_cast<std::uint64_t>(rhs_abs._safe_at(j));
+      const std::uint64_t temp = lhs_num * rhs_num + carry;
+      carry = temp >> 32;
+      temp_num[j] = static_cast<std::uint32_t>(temp - (carry << 32));
+    }
+    const auto test = temp_num << (i * 32);
+    res += (temp_num << (i * 32));
+  }
+
+  if (is_negative() && !rhs.is_negative() ||
+      rhs.is_negative() && !is_negative()) {
+    res.neg();
   }
 
   // overflow exception has to be done better
-  // if (carry) {
-  //   throw MP::Exception<N>("Overflow [*=](carry)", *this);
-  // }
+  if (carry) {
+    throw MP::Exception<template_max<N, M>()>("Overflow [*](carry)", res);
+  }
 
+  *this = std::move(res);
   return *this;
 }
 
@@ -512,13 +566,15 @@ auto operator<=>(const MP::Num<N>& lhs, const MP::Num<M>& rhs) {
 
 template <int N> MP::Num<N> MP::Num<N>::factorial() const {
   if (is_negative()) {
-    throw MP::Exception<N>("Factorial cannot be performed on negative numbers");
+    throw MP::Exception<N>("Factorial cannot be performed on negative numbers",
+                           *this);
   }
 
   MP::Num<N> res{1};
 
   for (MP::Num<N> i{1}; (i <=> *this) <= 0; i += MP::Num<N>{1}) {
     res *= i;
+    std::cout << res << std::endl;
   }
 
   return res;

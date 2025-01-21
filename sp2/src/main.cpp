@@ -183,7 +183,7 @@ void print_tests() {
     }
   }
 
-  std::cout << "-- add/sub assignment operator --" << std::endl;
+  std::cout << "-- +/+= --" << std::endl;
   {
     MP::Num<10> a{89};
     MP::Num<5> b{18};
@@ -195,6 +195,7 @@ void print_tests() {
     std::cout << a << std::endl;
   }
 
+  std::cout << "-- * --" << std::endl;
   {
     MP::Num<10> a{420};
     MP::Num<10> b{-69};
@@ -202,12 +203,14 @@ void print_tests() {
     std::cout << "a * b = " << c << std::endl;
   }
 
+  std::cout << "-- *= --" << std::endl;
   {
     MP::Num<10> a{420};
     MP::Num<10> b{-69};
     std::cout << "a *= b = " << (a *= b) << std::endl;
   }
 
+  std::cout << "-- / --" << std::endl;
   {
     MP::Num<15> a{78654};
     MP::Num<10> b{573};
@@ -215,6 +218,7 @@ void print_tests() {
     std::cout << "a / b = " << a / b << std::endl;
   }
 
+  std::cout << "-- /= --" << std::endl;
   {
     MP::Num<15> a{-78654};
     MP::Num<10> b{573};
@@ -222,8 +226,9 @@ void print_tests() {
     std::cout << "a /= b | a = " << (a /= b) << std::endl;
   }
 
+  std::cout << "-- ! --" << std::endl;
   {
-    MP::Num<1000> a{20};
+    MP::Num<10> a{10};
     std::cout << a.factorial() << std::endl;
   }
 }
