@@ -183,6 +183,7 @@ void print_tests() {
     }
   }
 
+  std::cout << "-- add/sub assignment operator --" << std::endl;
   {
     MP::Num<10> a{89};
     MP::Num<5> b{18};
