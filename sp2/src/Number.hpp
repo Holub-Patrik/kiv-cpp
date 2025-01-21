@@ -573,7 +573,7 @@ template <int N> MP::Num<N> MP::Num<N>::factorial() const {
   MP::Num<N> res{1};
 
   for (MP::Num<N> i{1}; (i <=> *this) <= 0; i += MP::Num<N>{1}) {
-    res *= i;
+    res = i * res;
     std::cout << res << std::endl;
   }
 

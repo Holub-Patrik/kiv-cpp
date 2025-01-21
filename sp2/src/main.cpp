@@ -228,7 +228,7 @@ void print_tests() {
 
   std::cout << "-- ! --" << std::endl;
   {
-    MP::Num<10> a{10};
+    MP::Num<32> a{10};
     std::cout << a.factorial() << std::endl;
   }
 }
@@ -237,8 +237,8 @@ int main(int argc, char* argv[]) {
   // std::cout << "--- Addition and subtraction conversions ---" << std::endl;
   // print_sums();
 
-  std::cout << "--- Various other tests on static ---" << std::endl;
-  print_tests();
+  // std::cout << "--- Various other tests on static ---" << std::endl;
+  // print_tests();
 
   std::cout << "--- Unlimited (Prepare for trouble) ---" << std::endl;
   MP::Num<MP::Unlimited> a{163};
@@ -264,8 +264,7 @@ int main(int argc, char* argv[]) {
     std::cout << "-- end --" << std::endl;
   }
 
-  // funnily enough, both are wrong
-  c = a * b; // different result from b*a
+  c = a * b;
   std::cout << c << std::endl;
   c = b * a;
   std::cout << c << std::endl;
