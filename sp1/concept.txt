@@ -1,0 +1,52 @@
+Pos // theoretically, I do not know the coordinate system
+	. X,Y
+
+Color // could be more generic, but let's not get too insane
+	. R,G,B
+
+Pixel
+	. Pos
+	. Color
+
+Line
+	. Pos
+	. Args[]
+	. Type
+
+Canvas
+	. Drawables[]
+
+	- RasterCanvas
+	- VectorCanvas
+
+	. virtual Save()
+	. virtual Add()
+	. virtual Render()
+
+Command
+	- DrawCommand
+		. Drawable
+	- TranformCommand
+		. Transform
+
+	. virtual Execute()
+
+Drawable
+	. Pos
+	. Color
+	. Args[]
+
+	- Line
+	- Circle
+	- Rect
+
+Transorm
+	- Translate
+	- Rotate
+	- Scale
+	
+	. virtual Transform(Canvas)
+
+Program flow
+	. instantiate painter, canvas, command stack
+	. parse commands -> add to command stack
