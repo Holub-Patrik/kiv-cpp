@@ -1,3 +1,4 @@
+#pragma once
 #include "DataTypes.h"
 #include <vector>
 
@@ -10,4 +11,13 @@ protected:
 public:
   Drawable();
   virtual ~Drawable();
+};
+
+class Line : public Drawable {
+public:
+  Line() = delete;
+  virtual ~Line() override;
+
+  Line(double, double, double, double);
+  Line(Pos, Pos);
 };

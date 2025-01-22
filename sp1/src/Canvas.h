@@ -1,3 +1,4 @@
+#pragma once
 #include "Primitives.h"
 #include <string>
 #include <vector>
