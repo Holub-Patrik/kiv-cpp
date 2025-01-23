@@ -17,11 +17,12 @@ Canvas
 	. Drawables[]
 
 	- RasterCanvas
+		- BMPCanvas
 	- VectorCanvas
+		- SVGCanvas
 
 	. virtual Save()
 	. virtual Add()
-	. virtual Render()
 
 Command
 	- DrawCommand
@@ -35,6 +36,9 @@ Drawable
 	. Pos
 	. Color
 	. Args[]
+
+	- SVGDrawable
+	- BMPDrawable
 
 	- Line
 	- Circle
@@ -50,3 +54,5 @@ Transorm
 Program flow
 	. instantiate painter, canvas, command stack
 	. parse commands -> add to command stack
+
+Where the fuck should I put render/rasterization/svgification of the Drawables?

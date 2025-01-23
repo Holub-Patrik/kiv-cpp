@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_CPP_COMPILER "clang++")
 
@@ -8,4 +8,4 @@ file(GLOB_RECURSE sources      src/*.cpp src/*.h)
 
 add_executable(drawing.exe ${sources})
 
-target_compile_options(bin.out PUBLIC -std=c++23)
+target_compile_options(drawing.exe PUBLIC -std=c++23)
