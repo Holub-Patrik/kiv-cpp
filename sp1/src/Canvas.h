@@ -1,47 +1,62 @@
 #pragma once
 #include "Primitives.h"
+#include <fstream>
 #include <string>
 #include <vector>
 
 class Canvas {
 protected:
+  int m_width;
+  int m_height;
   std::vector<Drawable> m_objects;
 
 public:
-  Canvas() {} // empty as the base class interacts as interface
-  virtual ~Canvas() = 0;
+  Canvas();
+  Canvas(int, int);
+  virtual ~Canvas() = default;
 
-  virtual void Save() = 0;
+  virtual void Save(std::fstream) = 0;
   virtual void Add(Drawable) = 0;
 };
 
 class RasterCanvas : public Canvas {
+protected:
+  std::vector<int> pixel_matrix;
+
 public:
   RasterCanvas();
-  virtual ~RasterCanvas() override;
+  RasterCanvas(int, int);
+  virtual ~RasterCanvas() override = default;
 
   virtual void Add(Drawable) override final;
 };
 
-class BMPCanvas final : RasterCanvas {
+class BMPCanvas final : public RasterCanvas {
 public:
   BMPCanvas();
-  virtual ~BMPCanvas() override final;
+  BMPCanvas(int, int);
+  virtual ~BMPCanvas() override final = default;
 
-  virtual void Save() override final;
+  virtual void Save(std::fstream) override final;
 };
 
 class VectorCanvas : public Canvas {
 public:
   VectorCanvas();
-  virtual ~VectorCanvas() override;
+  VectorCanvas(int, int);
+
+  virtual ~VectorCanvas() override = default;
   virtual void Add(Drawable) override final;
 };
 
 class SVGCanvas final : public VectorCanvas {
+private:
+  std::vector<std::string> end_stack;
+
 public:
   SVGCanvas();
-  virtual ~SVGCanvas() override final;
+  SVGCanvas(int, int);
+  virtual ~SVGCanvas() override final = default;
 
-  virtual void Save() override final;
+  virtual void Save(std::fstream) override final;
 };

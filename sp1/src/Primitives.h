@@ -15,14 +15,14 @@ protected:
   std::vector<int> m_args; // different args for different drawables
 
 public:
-  Drawable() = delete; // cannot be instantiated
+  Drawable();
   virtual ~Drawable();
 };
 
 // defines that said drawable can be rendered as SVG
 class SVGDrawable : virtual public Drawable {
 public:
-  SVGDrawable() = delete; // cannot be instantiated
+  SVGDrawable();
   virtual ~SVGDrawable();
 
   virtual std::string DrawSVG() const = 0;
@@ -31,7 +31,7 @@ public:
 // defines that said drawable can be rendered as BMP
 class BMPDrawable : virtual public Drawable {
 public:
-  BMPDrawable() = delete; // cannot be instantiated
+  BMPDrawable();
   virtual ~BMPDrawable();
 
   virtual std::vector<std::array<int, 2>> DrawPixels() const = 0;
@@ -39,7 +39,7 @@ public:
 
 class Line : public SVGDrawable, public BMPDrawable {
 public:
-  Line() = delete;
+  Line() = delete; // do not allow for empty values
   virtual ~Line() override;
 
   Line(int, int, int, int);
@@ -51,7 +51,7 @@ public:
 
 class Circle : public SVGDrawable, public BMPDrawable {
 public:
-  Circle() = delete;
+  Circle() = delete; // do not allow for empty values
   virtual ~Circle() override;
 
   Circle(int, int, int);
@@ -63,7 +63,7 @@ public:
 
 class Rect : public SVGDrawable, public BMPDrawable {
 public:
-  Rect() = delete;
+  Rect() = delete; // do not allow for empty values
   virtual ~Rect() override;
 
   Rect(int, int, int, int);
