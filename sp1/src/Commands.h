@@ -1,6 +1,5 @@
 #include "Canvas.h"
 #include "Primitives.h"
-#include "Transforms.h"
 
 class Command {
   Command() = default;
@@ -24,13 +23,13 @@ public:
 
 class TransformCommand final : public Command {
 private:
-  Transform m_transform;
+  TMatrix m_transform;
 
 public:
   TransformCommand() = delete;
   virtual ~TransformCommand() override final;
 
-  TransformCommand(Transform);
+  TransformCommand(TMatrix);
 
   virtual void Execute(Canvas) override final;
 };

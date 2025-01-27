@@ -1,25 +1,37 @@
 #include "Canvas.h"
 #include "Primitives.h"
-#include <fstream>
+#include <cstdlib>
+#include <memory>
+#include <utility>
 
 int main(int argc, char* argv[]) {
-  Line l1{0, 0, 1, 1};
-  Line l2{0, 1, 1, 0};
+  std::unique_ptr<Drawable> p_r1(new Rect(40, 50, 100, 30));
 
-  SVGCanvas svg{};
-  BMPCanvas bmp{};
+  std::unique_ptr<Drawable> p_l3(new Line(0, 0, 200, 100));
+  std::unique_ptr<Drawable> p_l4(new Line(0, 200, 100, 0));
+  std::unique_ptr<Drawable> p_c2(new Circle(200, 100, 50));
+  std::unique_ptr<Drawable> p_r2(new Rect(40, 50, 100, 30));
 
-  std::fstream svg_file("test.svg");
-  std::fstream bmp_file("test.bmp");
+  ScaleMatrix test_mat{2};
+  TranslateMatrix mov1{-40, -50};
+  RotateMatrix test_rot{22.5};
+  TranslateMatrix mov2{40, 50};
 
-  svg.Add(l1);
-  svg.Add(l2);
+  SVGCanvas svg{800, 600};
+  BMPCanvas bmp{800, 600};
 
-  bmp.Add(l1);
-  bmp.Add(l2);
+  svg.Add(std::move(p_r1));
+  svg *= mov1;
+  svg *= test_rot;
+  svg *= mov2;
 
-  svg.Save(std::move(svg_file));
-  bmp.Save(std::move(bmp_file));
+  bmp.Add(std::move(p_l3));
+  bmp.Add(std::move(p_l4));
+  bmp.Add(std::move(p_c2));
+  bmp.Add(std::move(p_r2));
 
-  return 0;
+  svg.Save("test.svg");
+  bmp.Save("test.pgm");
+
+  return EXIT_SUCCESS;
 }
