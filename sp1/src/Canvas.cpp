@@ -16,15 +16,11 @@ Canvas::Canvas()
 Canvas::Canvas(int width, int height)
     : m_objects(std::vector<std::unique_ptr<Drawable>>{}), m_width(width),
       m_height(height) {}
+Canvas::~Canvas() = default;
 
 Canvas& Canvas::operator*=(const TMatrix& transform) {
   std::for_each(std::execution::par_unseq, m_objects.begin(), m_objects.end(),
                 [this, &transform](auto& obj_ptr) { *obj_ptr *= transform; });
-  return *this;
-}
-
-Canvas& Canvas::operator<<(std::unique_ptr<Drawable>&& object) {
-  Add(std::move(object));
   return *this;
 }
 
@@ -33,6 +29,7 @@ RasterCanvas::RasterCanvas(int width, int height)
     : Canvas(width, height), pixel_matrix(std::vector<int>{}) {
   pixel_matrix.reserve(width * height);
 }
+RasterCanvas::~RasterCanvas() = default;
 
 void RasterCanvas::Add(std::unique_ptr<Drawable>&& obj_ptr) {
   m_objects.push_back(std::move(obj_ptr));
@@ -40,15 +37,17 @@ void RasterCanvas::Add(std::unique_ptr<Drawable>&& obj_ptr) {
 
 VectorCanvas::VectorCanvas() : Canvas() {}
 VectorCanvas::VectorCanvas(int width, int height) : Canvas(width, height) {}
+VectorCanvas::~VectorCanvas() = default;
 
 void VectorCanvas::Add(std::unique_ptr<Drawable>&& obj_ptr) {
   m_objects.push_back(std::move(obj_ptr));
 }
 
-BMPCanvas::BMPCanvas() : RasterCanvas() {}
-BMPCanvas::BMPCanvas(int width, int height) : RasterCanvas(width, height) {}
+PGMCanvas::PGMCanvas() : RasterCanvas() {}
+PGMCanvas::PGMCanvas(int width, int height) : RasterCanvas(width, height) {}
+PGMCanvas::~PGMCanvas() = default;
 
-void BMPCanvas::Save(std::string file_path) {
+void PGMCanvas::Save(std::string file_path) {
   std::fstream out_file(file_path, std::fstream::out | std::fstream::trunc);
 
   out_file << std::format("P5\n{}\n{}\n1\n", m_width, m_height);
@@ -59,6 +58,9 @@ void BMPCanvas::Save(std::string file_path) {
                   auto pixels = temp.DrawPGM();
                   for (const auto& pixel : pixels) {
                     if (pixel[0] > m_width || pixel[1] > m_height) {
+                      continue;
+                    }
+                    if (pixel[0] < 0 || pixel[1] < 0) {
                       continue;
                     }
 
@@ -82,6 +84,7 @@ void BMPCanvas::Save(std::string file_path) {
 SVGCanvas::SVGCanvas()
     : end_stack(std::vector<std::string>{}), VectorCanvas() {}
 SVGCanvas::SVGCanvas(int width, int height) : VectorCanvas(width, height) {}
+SVGCanvas::~SVGCanvas() = default;
 
 void SVGCanvas::Save(std::string file_path) {
   std::fstream out_file(file_path, std::fstream::out | std::fstream::binary |

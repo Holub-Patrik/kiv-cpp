@@ -32,6 +32,7 @@ public:
 
   TMatrix& operator*=(const TMatrix&);
   std::array<double, 3> operator[](max_index<3> auto index) const;
+  std::array<double, 3>& operator[](max_index<3> auto index);
 };
 
 class Pos final {
@@ -94,13 +95,19 @@ public:
   virtual ~ScaleMatrix() override final = default;
 
   ScaleMatrix(double);
-  ScaleMatrix(double, double);
+};
+
+class IdentityMatrix final : public TMatrix {
+public:
+  IdentityMatrix();
+  virtual ~IdentityMatrix() override final = default;
 };
 
 // defines what all of them have to have in terms of variables
 class Drawable {
 protected:
   Pos m_pos; // first position point
+  TMatrix m_transform;
 
 public:
   Drawable();

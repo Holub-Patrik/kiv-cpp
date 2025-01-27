@@ -15,13 +15,12 @@ protected:
 public:
   Canvas();
   Canvas(int, int);
-  virtual ~Canvas() = default;
+  virtual ~Canvas();
 
   virtual void Save(std::string) = 0;
   virtual void Add(std::unique_ptr<Drawable>&&) = 0;
 
-  virtual Canvas& operator*=(const TMatrix&);
-  virtual Canvas& operator<<(std::unique_ptr<Drawable>&&) final;
+  virtual Canvas& operator*=(const TMatrix&) final;
 };
 
 class RasterCanvas : public Canvas {
@@ -32,17 +31,17 @@ public:
   RasterCanvas();
   RasterCanvas(int, int);
 
-  virtual ~RasterCanvas() override = default;
+  virtual ~RasterCanvas() override;
 
   virtual void Save(std::string) override = 0;
   virtual void Add(std::unique_ptr<Drawable>&&) override final;
 };
 
-class BMPCanvas final : public RasterCanvas {
+class PGMCanvas final : public RasterCanvas {
 public:
-  BMPCanvas();
-  BMPCanvas(int, int);
-  virtual ~BMPCanvas() override final = default;
+  PGMCanvas();
+  PGMCanvas(int, int);
+  virtual ~PGMCanvas() override final;
 
   virtual void Save(std::string) override final;
 };
@@ -52,7 +51,7 @@ public:
   VectorCanvas();
   VectorCanvas(int, int);
 
-  virtual ~VectorCanvas() override = default;
+  virtual ~VectorCanvas() override;
 
   virtual void Save(std::string) override = 0;
   virtual void Add(std::unique_ptr<Drawable>&&) override final;
@@ -65,8 +64,7 @@ private:
 public:
   SVGCanvas();
   SVGCanvas(int, int);
-  virtual ~SVGCanvas() override final = default;
+  virtual ~SVGCanvas() override final;
 
-  virtual SVGCanvas& operator*=(const TMatrix&) override;
   virtual void Save(std::string) override final;
 };
