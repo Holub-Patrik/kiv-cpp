@@ -3,19 +3,20 @@
 #include "Primitives.h"
 #include <algorithm>
 #include <cctype>
+#include <exception>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 
 Drawing::~Drawing() = default;
 
 Drawing::Drawing(std::string file_in, std::string file_out, int width,
                  int height) {
+
   m_file_in = std::fstream(file_in, std::fstream::in);
   std::filesystem::path fout_path{file_out};
   std::string extension = fout_path.extension();
@@ -28,33 +29,54 @@ Drawing::Drawing(std::string file_in, std::string file_out, int width,
   } else if (extension == ".pgm") {
     m_canvas = std::unique_ptr<Canvas>(new PGMCanvas(width, height));
     m_file_out = file_out;
-  } else {
-    throw std::invalid_argument(
-        std::format("File out has invalid extension {}", extension));
   }
 }
 
-bool Drawing::ParseFile() {
+std::optional<std::string> Drawing::validate_input(std::string file_in,
+                                                   std::string file_out) {
+  if (!std::filesystem::exists(file_in)) {
+    return "Input file doesn't exist";
+  }
+
+  std::fstream try_open{file_in, std::fstream::in};
+  if (!try_open.is_open()) {
+    return "File couldn't be opened";
+  }
+
+  std::string extension = std::filesystem::path{file_out}.extension();
+  if (extension == ".svg" || extension == ".pgm") {
+    return std::nullopt;
+  } else {
+    return std::format(
+        "Output file extension not recognized: {}\nValid are: .svg | .pgm",
+        extension);
+  }
+
+  return std::nullopt;
+}
+
+int Drawing::ParseFile() {
   std::string line;
+  int lines_parsed = 0;
   while (std::getline(m_file_in, line)) {
     auto ret = ParseLine(line);
     if (ret) {
-      std::cout << *ret;
-      return false;
+      std::cout << *ret << std::endl;
+      return -1;
     }
+    lines_parsed++;
   }
 
-  return true;
+  return lines_parsed;
 }
 
 int Drawing::run() {
-  if (ParseFile()) {
-    return 0;
-  } else {
-    return 1;
+  int lines_parsed = ParseFile();
+  if (lines_parsed > 0) {
+    m_canvas->Save(m_file_out);
   }
 
-  m_canvas->Save(m_file_out);
+  return lines_parsed;
 }
 
 // take a copy as I will be making sure it's trimmed

@@ -15,8 +15,9 @@ public:
 
   Drawing(std::string, std::string, int,
           int); // file_in, file_out, width, height
-
-  bool ParseFile();
+  // should be called before calling the constructor
+  static std::optional<std::string> validate_input(std::string, std::string);
+  int ParseFile();
   std::optional<std::string> ParseLine(std::string);
   int run();
 };
