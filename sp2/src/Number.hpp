@@ -110,63 +110,39 @@ template <int N> MP::Num<N>& MP::Num<N>::neg() noexcept {
 }
 
 template <int N>
-MP::Num<N>::Num(const char* input_str) : repr(typename stl_type<N>::Type{0}) {
-  // first find \0 character, from there go in reverse
-  int length = 0;
-  bool is_numeric = true;
-  char wrong_char = 0;
-  bool negative = false;
-
-  for (int i = 0; char a = input_str[i]; i++) {
-    // should be checked using a locale, but I know this won't be run somewhere
-    // weird
-    if (a < '0' || a > '9') {
-      if (a == '-') {
-        length++;
-        continue;
-      }
-      is_numeric = false;
-      wrong_char = a;
-      break;
-    }
-    length++;
-  }
-
-  if (!is_numeric) {
-    throw MP::Exception<N>(
-        std::format("Number given wasn't a number. Offending: {}", wrong_char));
-  }
-
-  int repr_index = 0;
-  for (int i = length; i--;) {
-    if (input_str[i] == '-') {
-      negative = true;
-      break;
-    }
-    _at(repr_index) = input_str[i] - '0';
-    ++repr_index;
-  }
-}
+MP::Num<N>::Num(const char* input_str) : Num(std::string{input_str}) {}
 
 template <int N>
 MP::Num<N>::Num(const std::string input_str)
     : repr(typename stl_type<N>::Type{0}) {
   bool negative = false;
-  int repr_index = 0;
-  // just use a reverse iterator
-  for (auto it = input_str.rbegin(); it != input_str.rend(); it++) {
+  bool minus_sign_allowed = true;
+  bool first_digit = true;
+  for (auto it = input_str.begin(); it != input_str.end(); it++) {
     if (*it < '0' || *it > '9') {
-      if (*it == '-') {
+      if (*it == '-' && minus_sign_allowed) {
         negative = true;
-        break;
+        minus_sign_allowed = false;
+        continue;
+      } else {
+        throw MP::Exception<N>(
+            std::format("Number given isn't a number. Offending: {}", *it));
       }
-
-      throw MP::Exception<N>(
-          std::format("Number given isn't a number. Offending: {}", *it));
     }
 
-    _at(repr_index) = *it - '0';
-    repr_index++;
+    if (first_digit) {
+      *this = MP::Num<N>{*it - '0'};
+      minus_sign_allowed = false;
+      first_digit = false;
+      continue;
+    }
+
+    *this *= MP::Num<N>{10};
+    *this += MP::Num<N>{*it - '0'};
+  }
+
+  if (negative) {
+    neg();
   }
 }
 
@@ -201,7 +177,7 @@ template <int N> MP::Num<N>::operator std::string() const {
   std::ostringstream s;
   auto out_cp{*this};
   if (out_cp.is_negative()) {
-    s << "- ";
+    s << "-";
     out_cp.neg();
   }
 
@@ -219,13 +195,8 @@ template <int N> MP::Num<N>::operator std::string() const {
 
   std::for_each(out_buf.rbegin(), out_buf.rend(), [&s](auto elem) {
     s << elem;
-    s << " ";
+    // s << " "; // debug purpouses
   });
-
-  // for (auto it = out_cp.repr.rbegin(); it != out_cp.repr.rend(); it++) {
-  //   s << *it;
-  //   s << " ";
-  // }
 
   return std::string{s.str()};
 }
@@ -236,8 +207,12 @@ std::ostream& operator<<(std::ostream& os, const MP::Num<N>& num) {
   return os;
 }
 
-template <int N> const short MP::Num<N>::last() const {
-  return repr[repr.size() - 1];
+template <int N> const bool MP::Num<N>::is_negative() const noexcept {
+  return (last() >> 31) & 1;
+}
+
+template <int N> const MP::repr_type MP::Num<N>::last() const {
+  return *repr.rbegin();
 }
 
 /*
@@ -379,7 +354,6 @@ template <int N, int M>
 MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs) {
   MP::Num<template_max<N, M>()> res{0};
-  const size_t larger = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
   // take absolute values, since I do not know what will happen if I don't
   // and I do not want to mess with that logic
   auto lhs_abs = lhs.abs();
@@ -574,7 +548,7 @@ template <int N> MP::Num<N> MP::Num<N>::factorial() const {
 
   for (MP::Num<N> i{1}; (i <=> *this) <= 0; i += MP::Num<N>{1}) {
     res = i * res;
-    std::cout << res << std::endl;
+    // std::cout << res << std::endl;
   }
 
   return res;

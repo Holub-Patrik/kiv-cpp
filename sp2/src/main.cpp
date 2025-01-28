@@ -6,6 +6,25 @@
 #include <iostream>
 #include <print>
 
+void print_sums();
+void print_tests();
+void instantiation_test();
+void terminal_test();
+
+int main(int argc, char* argv[]) {
+  // std::cout << "--- Addition and subtraction conversions ---" << std::endl;
+  // print_sums();
+
+  // std::cout << "--- Various other tests on static ---" << std::endl;
+  // print_tests();
+
+  // std::cout << "--- Instantiation tests ---" << std::endl;
+  // instantiation_test();
+
+  terminal_test();
+  return 0;
+}
+
 void print_sums() {
   std::cout << "-- Limited --" << std::endl;
   {
@@ -231,81 +250,79 @@ void print_tests() {
     MP::Num<32> a{10};
     std::cout << a.factorial() << std::endl;
   }
-}
-
-int main(int argc, char* argv[]) {
-  // std::cout << "--- Addition and subtraction conversions ---" << std::endl;
-  // print_sums();
-
-  // std::cout << "--- Various other tests on static ---" << std::endl;
-  // print_tests();
 
   std::cout << "--- Unlimited (Prepare for trouble) ---" << std::endl;
-  MP::Num<MP::Unlimited> a{163};
-  std::cout << a << std::endl;
-  MP::Num<MP::Unlimited> b{292};
-  std::cout << b << std::endl;
-  MP::Num<MP::Unlimited> c;
-  c = a + b;
-  std::cout << c << std::endl;
-  c = a - b; // wrong seems, that the carry is getting ignored
-  std::cout << c << std::endl;
-  c = b - a;
-  std::cout << c << std::endl;
+  {
+    MP::Num<MP::Unlimited> a{163};
+    std::cout << a << std::endl;
+    MP::Num<MP::Unlimited> b{292};
+    std::cout << b << std::endl;
+    MP::Num<MP::Unlimited> c;
+    c = a + b;
+    std::cout << c << std::endl;
+    c = a - b; // wrong seems, that the carry is getting ignored
+    std::cout << c << std::endl;
+    c = b - a;
+    std::cout << c << std::endl;
 
-  { // limited test works, interesting
-    std::cout << "-- quick limited test --" << std::endl;
-    MP::Num<10> test_1{163};
-    MP::Num<10> test_2{292};
-    std::cout << test_1 * test_2 << std::endl;
-    std::cout << test_2 * test_1 << std::endl;
-    std::cout << test_1 / test_2 << std::endl;
-    std::cout << test_2 / test_1 << std::endl;
-    std::cout << "-- end --" << std::endl;
+    { // limited test works, interesting
+      std::cout << "-- quick limited test --" << std::endl;
+      MP::Num<10> test_1{163};
+      MP::Num<10> test_2{292};
+      std::cout << test_1 * test_2 << std::endl;
+      std::cout << test_2 * test_1 << std::endl;
+      std::cout << test_1 / test_2 << std::endl;
+      std::cout << test_2 / test_1 << std::endl;
+      std::cout << "-- end --" << std::endl;
+    }
+
+    c = a * b;
+    std::cout << c << std::endl;
+    c = b * a;
+    std::cout << c << std::endl;
+    c = a / b;
+    std::cout << c << std::endl;
+    c = b / a;
+    std::cout << c << std::endl;
+    c = MP::Num<MP::Unlimited>{10}.factorial();
+    std::cout << c << std::endl;
   }
+}
 
-  c = a * b;
-  std::cout << c << std::endl;
-  c = b * a;
-  std::cout << c << std::endl;
-  c = a / b;
-  std::cout << c << std::endl;
-  c = b / a;
-  std::cout << c << std::endl;
+void instantiation_test() {
+  std::cout << "--- string instatiation ---" << std::endl;
 
-  // std::cout << "--- string instatiation ---" << std::endl;
+  const char* number_inter = "3458239";
+  const char* number_inter_neg = "-3458239";
+  MP::Num<10> num_char_l{number_inter};
+  MP::Num<MP::Unlimited> num_char_u{number_inter};
+  MP::Num<10> num_char_l_neg{number_inter_neg};
+  MP::Num<MP::Unlimited> num_char_u_neg{number_inter_neg};
 
-  // const char* number_inter = "3458239";
-  // const char* number_inter_neg = "-3458239";
-  // MP::Num<10> num_char_l{number_inter};
-  // MP::Num<MP::Unlimited> num_char_u{number_inter};
-  // MP::Num<10> num_char_l_neg{number_inter_neg};
-  // MP::Num<MP::Unlimited> num_char_u_neg{number_inter_neg};
+  std::cout << "Char* :" << number_inter << std::endl;
+  std::cout << "Char* Neg:" << number_inter_neg << std::endl;
+  std::cout << "Char* Limited: " << num_char_l << std::endl;
+  std::cout << "Char* Unlimited: " << num_char_u << std::endl;
+  std::cout << "Char* Limited Neg: " << num_char_l_neg << std::endl;
+  std::cout << "Char* Unlimited Neg: " << num_char_u_neg << std::endl;
 
-  // std::cout << "Char* :" << number_inter << std::endl;
-  // std::cout << "Char* Limited: " << num_char_l << std::endl;
-  // std::cout << "Char* Unlimited: " << num_char_u << std::endl;
-  // std::cout << "Char* Limited Neg: " << num_char_l_neg << std::endl;
-  // std::cout << "Char* Unlimited Neg: " << num_char_u_neg << std::endl;
+  const std::string number_string = "7564849";
+  const std::string number_string_neg = "-7564849";
+  MP::Num<10> num_string_l{number_string};
+  MP::Num<MP::Unlimited> num_string_u{number_string};
+  MP::Num<10> num_string_l_neg{number_string_neg};
+  MP::Num<MP::Unlimited> num_string_u_neg{number_string_neg};
+  std::cout << "String :" << number_string << std::endl;
+  std::cout << "String Neg:" << number_string_neg << std::endl;
+  std::cout << "String Limited:" << num_string_l << std::endl;
+  std::cout << "String Unlimited:" << num_string_u << std::endl;
+  std::cout << "String Limited Neg:" << num_string_l_neg << std::endl;
+  std::cout << "String Unlimited Neg:" << num_string_u_neg << std::endl;
+}
 
-  // const std::string number_string = "7564849";
-  // const std::string number_string_neg = "-7564849";
-  // MP::Num<10> num_string_l{number_string};
-  // MP::Num<MP::Unlimited> num_string_u{number_string};
-  // MP::Num<10> num_string_l_neg{number_string_neg};
-  // MP::Num<MP::Unlimited> num_string_u_neg{number_string_neg};
-  // std::cout << "String :" << number_string << std::endl;
-  // std::cout << "String Limited:" << num_string_l << std::endl;
-  // std::cout << "String Unlimited:" << num_string_u << std::endl;
-  // std::cout << "String Limited Neg:" << num_string_l_neg << std::endl;
-  // std::cout << "String Unlimited Neg:" << num_string_u_neg << std::endl;
-
-  // Term<MP::Unlimited> t{};
-  // t.run();
-
-  MP::Num<MP::Unlimited> err{10};
-  c = err.factorial();
-  std::cout << c << std::endl;
-
-  return 0;
+void terminal_test() {
+  Term<32> t;
+  t.run();
+  Term<MP::Unlimited> t_un;
+  t_un.run();
 }

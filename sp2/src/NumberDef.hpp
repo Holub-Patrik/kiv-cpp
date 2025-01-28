@@ -56,6 +56,10 @@ public:
   Num(stl_type<N>::Type&&);
   explicit Num(const char*);
   Num(const std::string);
+  // copy conversion constructor from another number
+  template <int M> Num(const Num<M>&);
+  // copy conversion assignment operator from another number
+  template <int M> Num& operator=(const Num<M>&);
 
   // move constructor
   Num(Num<N>&&) noexcept;
@@ -70,7 +74,8 @@ public:
   // essentially getters for neccessary parts of the class
   const stl_type<N>::Type& get_repr() const noexcept { return repr; };
   std::size_t size() const noexcept { return repr.size(); };
-  const bool is_negative() const noexcept { return (last() >> 31) & 1; }
+
+  const bool is_negative() const noexcept;
 
   // change the number from negative to positive
   Num<N>& neg() noexcept;
@@ -107,7 +112,7 @@ public:
   operator std::string() const;
 
   // quick access to last element of the internal representation
-  const short last() const;
+  const MP::repr_type last() const;
 };
 
 } // namespace MP
