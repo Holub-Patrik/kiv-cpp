@@ -290,6 +290,7 @@ std::optional<std::string> Drawing::ParseLine(const std::string& line_in) {
     return std::nullopt;
   }
 
+  // take out the command so that the only args passed are the numbers
   std::string command = parts[0];
   parts.erase(parts.begin());
 
