@@ -20,6 +20,6 @@ public:
 
 private:
   std::string _msg;
-  Num<N> _num{0};
+  Num<N> _num{0L};
 };
 } // namespace MP

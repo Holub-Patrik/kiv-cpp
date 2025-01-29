@@ -52,7 +52,7 @@ public:
   ~Num() {}
 
   // QOL constructors
-  explicit Num(const std::int32_t);
+  Num(const std::int64_t);
   Num(stl_type<N>::Type&&);
   explicit Num(const char*);
   Num(const std::string);
@@ -93,10 +93,10 @@ public:
   Num<N> factorial() const;
 
   // operation assignment operators declared internally
-  template <int M> Num<N> operator+=(const Num<M>& rhs);
-  template <int M> Num<N> operator-=(const Num<M>& rhs);
-  template <int M> Num<N> operator/=(const Num<M>& rhs);
-  template <int M> Num<N> operator*=(const Num<M>& rhs);
+  template <int M> Num<N>& operator+=(const Num<M>& rhs);
+  template <int M> Num<N>& operator-=(const Num<M>& rhs);
+  template <int M> Num<N>& operator/=(const Num<M>& rhs);
+  template <int M> Num<N>& operator*=(const Num<M>& rhs);
 
   // access primitives to be used internaly
   const repr_type _at(size_t index) const;
@@ -119,6 +119,10 @@ public:
 
 template <int N, int M>
 auto operator<=>(const MP::Num<N>& lhs, const MP::Num<M>& rhs);
+
+template <int N> auto operator<=>(const MP::Num<N> lhs, const std::int64_t rhs);
+
+template <int N> auto operator<=>(const std::int64_t lhs, const MP::Num<N> rhs);
 
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator+(const MP::Num<N>& lhs,

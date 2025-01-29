@@ -2,8 +2,11 @@
 #include "NumberDef.hpp"
 #include "NumberEx.hpp"
 #include "Term.hpp"
+#include <cstdint>
 #include <exception>
 #include <iostream>
+#include <limits>
+#include <ostream>
 #include <print>
 
 void print_sums();
@@ -21,7 +24,15 @@ int main(int argc, char* argv[]) {
   // std::cout << "--- Instantiation tests ---" << std::endl;
   // instantiation_test();
 
-  terminal_test();
+  // terminal_test();
+
+  MP::Num<MP::Unlimited> a{1};
+  for (int i = 1; i < 100; i++) {
+    std::cout << a << ": ";
+    std::cout << a.factorial() << std::endl;
+    a += MP::Num<1>{1};
+  }
+
   return 0;
 }
 
@@ -219,6 +230,7 @@ void print_tests() {
     MP::Num<10> a{420};
     MP::Num<10> b{-69};
     auto c = a * b;
+    std::cout << "calculated: " << std::flush;
     std::cout << "a * b = " << c << std::endl;
   }
 
@@ -286,6 +298,12 @@ void print_tests() {
     std::cout << c << std::endl;
     c = MP::Num<MP::Unlimited>{10}.factorial();
     std::cout << c << std::endl;
+  }
+
+  std::cout << "--- carry tests ---" << std::endl;
+  {
+    MP::Num<10> num{std::numeric_limits<std::uint32_t>::max()};
+    std::cout << num << std::endl;
   }
 }
 
