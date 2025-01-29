@@ -1,16 +1,20 @@
 #include "Drawing.h"
 #include "Canvas.h"
 #include "Primitives.h"
-#include <algorithm>
 #include <cctype>
-#include <exception>
+#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <iterator>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <tuple>
+#include <unordered_map>
 
 Drawing::~Drawing() = default;
 
@@ -79,137 +83,235 @@ int Drawing::run() {
   return lines_parsed;
 }
 
-// take a copy as I will be making sure it's trimmed
-std::optional<std::string> Drawing::ParseLine(std::string line_in) {
-  // first trim from left
-  line_in.erase(line_in.begin(),
-                std::find_if(line_in.begin(), line_in.end(),
-                             [](unsigned char c) { return !std::isspace(c); }));
+// this a tool that will help us later (>ᴗ•)
+using primitive_ret = std::tuple<std::unique_ptr<Drawable>, std::string>;
+using transformation_ret = std::optional<std::string>;
+using arg_type = const std::vector<std::string>&;
+using primitive_func = std::function<primitive_ret(arg_type)>;
+using transformation_func =
+    std::function<transformation_ret(arg_type, std::unique_ptr<Canvas>&)>;
 
-  std::vector<std::string> parts;
-  std::stringstream line{line_in};
-  std::string temp;
+// semi-robust check if argument is numeric
+// doesn't handle non base 10 arguments
+static bool is_number(const std::string& s) {
+  if (s == "") {
+    return false;
+  }
+  bool sign = false;
+  bool dot = false;
+  auto it = s.begin();
 
-  // split by spaces
-  while (std::getline(line, temp, ' ')) {
-    parts.push_back(temp);
+  if (*it == '+' || *it == '-') {
+    sign = true;
+    it++;
   }
 
-  if (parts[0].starts_with("#")) {
+  for (; it != s.end(); it++) {
+    if (!std::isdigit(*it)) {
+      if (!dot && *it == '.') {
+        dot = true;
+        continue;
+      }
+
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static primitive_ret generate_line(arg_type parts) {
+  double x1, y1, x2, y2;
+  if (parts.size() < 4) {
+    return {nullptr, "Malformed line\nNot enough args"};
+  }
+
+  for (const auto& part : parts) {
+    if (!is_number(part)) {
+      return {nullptr,
+              std::format("Malformed line\nArgument isn't a whole number: {}",
+                          part)};
+    }
+  }
+
+  x1 = std::stod(parts[0]);
+  y1 = std::stod(parts[1]);
+  x2 = std::stod(parts[2]);
+  y2 = std::stod(parts[3]);
+
+  return {std::move(std::unique_ptr<Drawable>(new Line(x1, y1, x2, y2))), ""};
+}
+
+static primitive_ret generate_circle(arg_type parts) {
+  double x, y, r;
+  if (parts.size() < 3) {
+    return {nullptr, "Malformed line\nNot enough args"};
+  }
+
+  for (const auto& part : parts) {
+    if (!is_number(part)) {
+      return {nullptr,
+              std::format("Malformed line\nArgument isn't a whole number: {}",
+                          part)};
+    }
+  }
+
+  x = std::stod(parts[0]);
+  y = std::stod(parts[1]);
+  r = std::stod(parts[2]);
+
+  return {std::move(std::unique_ptr<Drawable>(new Circle(x, y, r))), ""};
+}
+
+static primitive_ret generate_rect(arg_type parts) {
+  double x, y, width, height;
+  if (parts.size() < 4) {
+    return {nullptr, "Malformed line\nNot enough args"};
+  }
+
+  for (const auto& part : parts) {
+    if (!is_number(part)) {
+      return {nullptr,
+              std::format("Malformed line\nArgument isn't a whole number: {}",
+                          part)};
+    }
+  }
+
+  x = std::stod(parts[0]);
+  y = std::stod(parts[1]);
+  width = std::stod(parts[2]);
+  height = std::stod(parts[3]);
+
+  return {std::move(std::unique_ptr<Drawable>(new Rect(x, y, width, height))),
+          ""};
+}
+
+static transformation_ret generate_translate(arg_type parts,
+                                             std::unique_ptr<Canvas>& c) {
+  double x, y;
+  if (parts.size() < 2) {
+    return "Malformed line\nNot enough args";
+  }
+
+  for (const auto& part : parts) {
+    if (!is_number(part)) {
+      return std::format("Malformed line\nArgument ins't a number: {}", part);
+    }
+  }
+
+  x = std::stod(parts[0]);
+  y = std::stod(parts[1]);
+
+  *c *= TranslateMatrix{x, y};
+
+  return std::nullopt;
+}
+
+static transformation_ret generate_scale(arg_type parts,
+                                         std::unique_ptr<Canvas>& c) {
+  double x, y, a;
+  if (parts.size() < 3) {
+    return "Malformed line\nNot enough args";
+  }
+
+  for (const auto& part : parts) {
+    if (!is_number(part)) {
+      return std::format("Malformed line\nArgument isn't a number: {}", part);
+    }
+  }
+
+  x = std::stod(parts[0]);
+  y = std::stod(parts[1]);
+  a = std::stod(parts[2]);
+
+  *c *= TranslateMatrix(-x, -y);
+  *c *= ScaleMatrix(a);
+  *c *= TranslateMatrix(x, y);
+
+  return std::nullopt;
+}
+
+static transformation_ret generate_rot(arg_type parts,
+                                       std::unique_ptr<Canvas>& c) {
+  double x, y, f;
+  if (parts.size() < 3) {
+    return "Malformed line\nNot enough args";
+  }
+
+  for (const auto& part : parts) {
+    if (!is_number(part)) {
+      return std::format("Malformed line\nArgument isn't number: {}", part);
+    }
+  }
+
+  x = std::stod(parts[0]);
+  y = std::stod(parts[1]);
+  f = std::stod(parts[2]);
+
+  *c *= TranslateMatrix(-x, -y);
+  *c *= RotateMatrix(f);
+  *c *= TranslateMatrix(x, y);
+
+  return std::nullopt;
+}
+
+// this is where we use the tool
+// basically a hashmap with generate functions that are matched against their
+// appropriate line
+// if someone wants to add a new primitive, just write a primitive function and
+// add it here !
+static std::unordered_map<std::string, primitive_func> primitives_gen{
+    {"line", generate_line},
+    {"circle", generate_circle},
+    {"rect", generate_rect},
+};
+
+static std::unordered_map<std::string, transformation_func> transform_gen{
+    {"translate", generate_translate},
+    {"scale", generate_scale},
+    {"rotate", generate_rot},
+};
+
+// take a copy as I will be making sure it's trimmed
+std::optional<std::string> Drawing::ParseLine(const std::string& line_in) {
+  // this splits the line
+  std::istringstream buffer(line_in);
+  std::vector<std::string> parts{std::istream_iterator<std::string>(buffer),
+                                 std::istream_iterator<std::string>()};
+  for (int i = 0; i < parts.size(); i++) {
+    if (parts[i].starts_with("#")) {
+      parts.erase(parts.begin() + i, parts.end());
+      break;
+    }
+  }
+
+  // entire line is erased aka entire line is comment
+  if (parts.size() == 0) {
     return std::nullopt;
   }
 
-  if (parts[0] == "line") {
-    double x1, y1, x2, y2;
+  std::string command = parts[0];
+  parts.erase(parts.begin());
 
-    if (parts.size() < 5) {
-      return std::format("Malformed line (not enough args): {}", line_in);
+  auto search_primitives = primitives_gen.find(command);
+  if (search_primitives != primitives_gen.end()) {
+    std::unique_ptr<Drawable> obj;
+    std::string err_msg;
+
+    std::tie(obj, err_msg) = search_primitives->second(parts);
+    if (obj) {
+      m_canvas->Add(std::move(obj));
+    } else {
+      return err_msg;
     }
-
-    try {
-      x1 = std::stod(parts[1]);
-      y1 = std::stod(parts[2]);
-      x2 = std::stod(parts[3]);
-      y2 = std::stod(parts[4]);
-    } catch (std::exception ex) {
-      return std::format("Malformed line (non number argument): {}", line_in);
-    }
-
-    m_canvas->Add(std::unique_ptr<Drawable>(new Line(x1, y1, x2, y2)));
   }
 
-  if (parts[0] == "circle") {
-    double x, y, r;
-
-    if (parts.size() < 4) {
-      return std::format("Malformed line (not enough args): {}", line_in);
+  auto search_transf = transform_gen.find(command);
+  if (search_transf != transform_gen.end()) {
+    auto res = search_transf->second(parts, m_canvas);
+    if (res) {
+      return *res;
     }
-
-    try {
-      x = std::stod(parts[1]);
-      y = std::stod(parts[2]);
-      r = std::stod(parts[3]);
-    } catch (std::exception ex) {
-      return std::format("Malformed line (non number argument): {}", line_in);
-    }
-
-    m_canvas->Add(std::unique_ptr<Drawable>(new Circle(x, y, r)));
-  }
-
-  if (parts[0] == "rect") {
-    double x, y, width, height;
-
-    if (parts.size() < 5) {
-      return std::format("Malformed line (not enough args): {}", line_in);
-    }
-
-    try {
-      x = std::stod(parts[1]);
-      y = std::stod(parts[2]);
-      width = std::stod(parts[3]);
-      height = std::stod(parts[4]);
-    } catch (std::exception ex) {
-      return std::format("Malformed line (non number argument): {}", line_in);
-    }
-
-    m_canvas->Add(std::unique_ptr<Drawable>(new Rect(x, y, width, height)));
-  }
-
-  if (parts[0] == "translate") {
-    double x, y;
-
-    if (parts.size() < 3) {
-      return std::format("Malformed line (not enough args): {}", line_in);
-    }
-
-    try {
-      x = std::stod(parts[1]);
-      y = std::stod(parts[2]);
-    } catch (std::exception ex) {
-      return std::format("Malformed line (non number argument): {}", line_in);
-    }
-
-    *m_canvas *= TranslateMatrix(x, y);
-  }
-
-  if (parts[0] == "rotate") {
-    double x, y, a;
-
-    if (parts.size() < 4) {
-      return std::format("Malformed line (not enough args): {}", line_in);
-    }
-
-    try {
-      x = std::stod(parts[1]);
-      y = std::stod(parts[2]);
-      a = std::stod(parts[3]);
-    } catch (std::exception ex) {
-      return std::format("Malformed line (non number argument): {}", line_in);
-    }
-
-    *m_canvas *= TranslateMatrix(-x, -y);
-    *m_canvas *= RotateMatrix(a);
-    *m_canvas *= TranslateMatrix(x, y);
-  }
-
-  if (parts[0] == "scale") {
-    double x, y, a;
-
-    if (parts.size() < 4) {
-      return std::format("Malformed line (not enough args): {}", line_in);
-    }
-
-    try {
-      x = std::stod(parts[1]);
-      y = std::stod(parts[2]);
-      a = std::stod(parts[3]);
-    } catch (std::exception ex) {
-      return std::format("Malformed line (non number argument): {}", line_in);
-    }
-
-    *m_canvas *= TranslateMatrix(-x, -y);
-    *m_canvas *= ScaleMatrix(a);
-    *m_canvas *= TranslateMatrix(x, y);
   }
 
   return std::nullopt;

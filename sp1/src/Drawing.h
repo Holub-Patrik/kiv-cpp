@@ -18,6 +18,6 @@ public:
   // should be called before calling the constructor
   static std::optional<std::string> validate_input(std::string, std::string);
   int ParseFile();
-  std::optional<std::string> ParseLine(std::string);
+  std::optional<std::string> ParseLine(const std::string&);
   int run();
 };

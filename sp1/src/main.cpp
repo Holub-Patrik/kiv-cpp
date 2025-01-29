@@ -4,7 +4,9 @@
 #include <array>
 #include <cstdlib>
 #include <iostream>
+#include <iterator>
 #include <memory>
+#include <sstream>
 #include <utility>
 
 void test_draw() {
@@ -56,6 +58,23 @@ void test_draw() {
   bmp.Save("test.pgm");
 }
 
+void test_string() {
+  std::string line_in = "#  line \t \t 10 20 # this is a comment";
+  std::istringstream buffer(line_in);
+  std::vector<std::string> parts{std::istream_iterator<std::string>(buffer),
+                                 std::istream_iterator<std::string>()};
+
+  for (int i = 0; i < parts.size(); i++) {
+    if (parts[i].starts_with("#")) {
+      parts.erase(parts.begin() + i, parts.end());
+      break;
+    }
+  }
+
+  for (const auto& part : parts) {
+    std::cout << "|" << part << "|" << std::endl;
+  }
+}
 int main(int argc, char* argv[]) {
   if (argc < 4) {
     std::cout << "Not enough arguments passed\nArgs are: <input-file> "
