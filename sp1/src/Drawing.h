@@ -21,3 +21,5 @@ public:
   std::optional<std::string> ParseLine(const std::string&);
   int run();
 };
+
+bool is_number(const std::string& s);

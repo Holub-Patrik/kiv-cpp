@@ -93,7 +93,7 @@ using transformation_func =
 
 // semi-robust check if argument is numeric
 // doesn't handle non base 10 arguments
-static bool is_number(const std::string& s) {
+bool is_number(const std::string& s) {
   if (s == "") {
     return false;
   }
