@@ -193,11 +193,13 @@ IdentityMatrix::IdentityMatrix() {
 // the order shouldn't matter, it will always be done the same way, I just
 // didn't want to care during writing code
 Pos operator*(const Pos& lhs, const TMatrix& rhs) {
-  std::array<double, 3> vec_3 = {lhs[0], lhs[1], 1};
+  const std::array<double, 3> vec_3 = {lhs[0], lhs[1], 1};
   std::array<double, 3> res{0};
 
   for (int i = 0; i < 3; i++) {
-    res[i] = vec_3[0] * rhs[i][0] + vec_3[1] * rhs[i][1] + vec_3[2] * rhs[i][2];
+    for (int j = 0; j < 3; j++) {
+      res[i] += rhs[j][i] * vec_3[j];
+    }
   }
 
   return Pos(res[0], res[1]);
@@ -205,7 +207,18 @@ Pos operator*(const Pos& lhs, const TMatrix& rhs) {
 
 // the order doesn't matter, it will always be done the same way, I just didn't
 // want to care during writing code
-Pos operator*(const TMatrix& lhs, const Pos& rhs) { return rhs * lhs; }
+Pos operator*(const TMatrix& lhs, const Pos& rhs) {
+  const std::array<double, 3> vec_3 = {rhs[0], rhs[1], 1};
+  std::array<double, 3> res{0};
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      res[i] += lhs[i][j] * vec_3[j];
+    }
+  }
+
+  return Pos(res[0], res[1]);
+}
 
 Drawable::Drawable() : m_pos({0, 0}) {}
 Drawable::~Drawable() = default;
@@ -246,9 +259,8 @@ std::string Line::DrawSVG() const {
 std::vector<std::array<int, 2>> Line::DrawPGM() const {
   std::vector<std::array<int, 2>> res;
 
-  // aplly the transform
-  const auto start_transf = m_pos * m_transform;
-  const auto end_transf = m_end * m_transform;
+  const auto start_transf = m_transform * m_pos;
+  const auto end_transf = m_transform * m_end;
 
   int x0 = static_cast<int>(start_transf["x"]);
   int y0 = static_cast<int>(start_transf["y"]);
@@ -305,24 +317,26 @@ std::string Circle::DrawSVG() const {
 std::vector<std::array<int, 2>> Circle::DrawPGM() const {
   std::vector<std::array<int, 2>> res;
 
-  const auto new_pos = m_pos * m_transform;
-  auto rad_vec = Pos{0, m_r};
+  const auto new_pos = m_transform * m_pos;
+  const auto rad_vec = Pos{m_r, 0};
   auto scale_and_rot = m_transform;
   // extract just the scale and rotate, so no translation happens
   scale_and_rot[0][2] = 0;
   scale_and_rot[1][2] = 0;
+
   scale_and_rot[2][0] = 0;
   scale_and_rot[2][1] = 0;
+
   scale_and_rot[2][2] = 1;
   // scale the vector
-  auto rad_vec_scaled = rad_vec * scale_and_rot;
+  const auto rad_vec_scaled = scale_and_rot * rad_vec;
 
   // all of above done so that this equation holds true sqrt(x^2 + y^2)
   auto radius = (std::sqrt(std::pow(rad_vec_scaled[1], 2) +
                            std::pow(rad_vec_scaled[0], 2)));
 
-  int xm = static_cast<int>(m_pos["x"]);
-  int ym = static_cast<int>(m_pos["y"]);
+  int xm = static_cast<int>(new_pos["x"]);
+  int ym = static_cast<int>(new_pos["y"]);
   int r = static_cast<int>(radius);
   int x = -r, y = 0, err = 2 - 2 * r; /* II. Quadrant */
 
@@ -373,10 +387,10 @@ std::string Rect::DrawSVG() const {
 std::vector<std::array<int, 2>> Rect::DrawPGM() const {
   std::vector<std::array<int, 2>> res;
 
-  const auto new_pos = m_pos * m_transform;
+  const auto new_pos = m_transform * m_pos;
   std::array<Pos, 3> new_points = m_points;
   for (auto& new_point : new_points) {
-    new_point *= m_transform;
+    new_point = m_transform * new_point;
   }
 
   // rectangle is 4 lines
