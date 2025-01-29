@@ -27,7 +27,7 @@ Canvas& Canvas::operator*=(const TMatrix& transform) {
 RasterCanvas::RasterCanvas() : Canvas() {}
 RasterCanvas::RasterCanvas(int width, int height)
     : Canvas(width, height), pixel_matrix(std::vector<int>{}) {
-  pixel_matrix.reserve(width * height);
+  pixel_matrix.resize(width * height);
 }
 RasterCanvas::~RasterCanvas() = default;
 
