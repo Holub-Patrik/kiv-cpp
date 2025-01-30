@@ -24,14 +24,23 @@ int main(int argc, char* argv[]) {
   // std::cout << "--- Instantiation tests ---" << std::endl;
   // instantiation_test();
 
-  // terminal_test();
+  std::cout << MP::Num<MP::Unlimited>{100}.factorial() << std::endl;
 
-  MP::Num<MP::Unlimited> a{1};
-  for (int i = 1; i < 100; i++) {
-    std::cout << a << ": ";
-    std::cout << a.factorial() << std::endl;
-    a += MP::Num<1>{1};
-  }
+  const MP::Num<MP::Unlimited> a_num{-32167325176321};
+  std::cout << a_num << std::flush;
+  const MP::Num<MP::Unlimited> b_num{1286362187213687};
+  std::cout << " * " << b_num << std::flush;
+  const auto c_num = a_num * b_num;
+  std::cout << " = " << c_num << std::endl;
+
+  const MP::Num<MP::Unlimited> a{"-32167325176321"};
+  std::cout << a << std::flush;
+  const MP::Num<MP::Unlimited> b{"1286362187213687"};
+  std::cout << " * " << b << std::flush;
+  const auto c = a * b;
+  std::cout << " = " << c << std::endl;
+
+  // terminal_test();
 
   return 0;
 }
@@ -43,10 +52,10 @@ void print_sums() {
     MP::Num<11> pos_b{19};
     MP::Num<12> neg_a{-13};
     MP::Num<13> neg_b{-14};
-    std::cout << pos_a << " -= " << pos_b << " => " << (pos_a -= pos_b)
-              << std::endl;
-    std::cout << pos_a << " += " << pos_b << " => " << (pos_a += pos_b)
-              << std::endl;
+    pos_a += pos_b;
+    std::cout << " += " << pos_a << std::endl;
+    pos_a -= pos_b;
+    std::cout << " -= " << pos_a << std::endl;
     auto c = MP::Num<10>{2543} / MP::Num<10>{10};
     std::cout << c << std::endl;
 
@@ -85,6 +94,8 @@ void print_sums() {
     MP::Num<MP::Unlimited> pos_b{18};
     MP::Num<MP::Unlimited> neg_a{-13};
     MP::Num<MP::Unlimited> neg_b{-14};
+    auto temp = pos_a - pos_a;
+    std::cout << temp.is_negative() << std::endl;
 
     std::cout << pos_a << " - " << pos_a << " = " << pos_a - pos_a << std::endl;
 
@@ -246,7 +257,15 @@ void print_tests() {
     MP::Num<15> a{78654};
     MP::Num<10> b{573};
 
-    std::cout << "a / b = " << a / b << std::endl;
+    std::cout << a << "/" << b << "=" << a / b << std::endl;
+  }
+
+  std::cout << "-- / --" << std::endl;
+  {
+    MP::Num<15> a{78654};
+    MP::Num<10> b{-573};
+
+    std::cout << a << "/" << b << "=" << a / b << std::endl;
   }
 
   std::cout << "-- /= --" << std::endl;
@@ -304,6 +323,10 @@ void print_tests() {
   {
     MP::Num<10> num{std::numeric_limits<std::uint32_t>::max()};
     std::cout << num << std::endl;
+    std::cout << (num += num) << std::endl;
+    std::cout << (num += num) << std::endl;
+    std::cout << (num += num) << std::endl;
+    std::cout << (num += num) << std::endl;
   }
 }
 

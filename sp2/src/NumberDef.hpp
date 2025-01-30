@@ -2,6 +2,7 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -16,12 +17,6 @@ typedef std::uint32_t repr_type;
 // used for simple multiplication aka N * [0-9]
 template <typename T>
 concept trivial = std::integral<T> && requires(T t) { t >= 0 && t < 10; };
-
-// experimental
-// template <typename T>
-// concept pos_int =
-//     std::integral<T> && requires(T t) { t > 0; } && std::convertible_to<T,
-//     int>;
 
 // -1 used for unlimited specialization
 constexpr int Unlimited = -1;
@@ -48,7 +43,9 @@ private:
   repr_type _absorb;
 
 public:
-  Num() : repr(typename stl_type<N>::Type{0}) {}
+  Num()
+      : repr(typename stl_type<N>::Type{0}),
+        _absorb(std::numeric_limits<repr_type>::max()) {}
   ~Num() {}
 
   // QOL constructors
@@ -139,6 +136,8 @@ MP::Num<N> operator*(const MP::Num<N>& num, const MP::trivial auto mul);
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs);
+
+template <int N> MP::Num<N> operator*(const MP::Num<N>& lhs, std::uint32_t rhs);
 
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator/(const MP::Num<N>& lhs,
