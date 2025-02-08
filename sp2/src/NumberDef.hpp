@@ -2,6 +2,7 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -16,12 +17,6 @@ typedef std::uint32_t repr_type;
 // used for simple multiplication aka N * [0-9]
 template <typename T>
 concept trivial = std::integral<T> && requires(T t) { t >= 0 && t < 10; };
-
-// experimental
-// template <typename T>
-// concept pos_int =
-//     std::integral<T> && requires(T t) { t > 0; } && std::convertible_to<T,
-//     int>;
 
 // -1 used for unlimited specialization
 constexpr int Unlimited = -1;
@@ -48,14 +43,20 @@ private:
   repr_type _absorb;
 
 public:
-  Num() : repr(typename stl_type<N>::Type{0}) {}
+  Num()
+      : repr(typename stl_type<N>::Type{0}),
+        _absorb(std::numeric_limits<repr_type>::max()) {}
   ~Num() {}
 
   // QOL constructors
-  explicit Num(const std::int32_t);
+  Num(const std::int64_t);
   Num(stl_type<N>::Type&&);
   explicit Num(const char*);
   Num(const std::string);
+  // copy conversion constructor from another number
+  template <int M> Num(const Num<M>&);
+  // copy conversion assignment operator from another number
+  template <int M> Num& operator=(const Num<M>&);
 
   // move constructor
   Num(Num<N>&&) noexcept;
@@ -70,7 +71,8 @@ public:
   // essentially getters for neccessary parts of the class
   const stl_type<N>::Type& get_repr() const noexcept { return repr; };
   std::size_t size() const noexcept { return repr.size(); };
-  const bool is_negative() const noexcept { return (last() >> 31) & 1; }
+
+  const bool is_negative() const noexcept;
 
   // change the number from negative to positive
   Num<N>& neg() noexcept;
@@ -88,10 +90,10 @@ public:
   Num<N> factorial() const;
 
   // operation assignment operators declared internally
-  template <int M> Num<N> operator+=(const Num<M>& rhs);
-  template <int M> Num<N> operator-=(const Num<M>& rhs);
-  template <int M> Num<N> operator/=(const Num<M>& rhs);
-  template <int M> Num<N> operator*=(const Num<M>& rhs);
+  template <int M> Num<N>& operator+=(const Num<M>& rhs);
+  template <int M> Num<N>& operator-=(const Num<M>& rhs);
+  template <int M> Num<N>& operator/=(const Num<M>& rhs);
+  template <int M> Num<N>& operator*=(const Num<M>& rhs);
 
   // access primitives to be used internaly
   const repr_type _at(size_t index) const;
@@ -107,13 +109,17 @@ public:
   operator std::string() const;
 
   // quick access to last element of the internal representation
-  const short last() const;
+  const MP::repr_type last() const;
 };
 
 } // namespace MP
 
 template <int N, int M>
 auto operator<=>(const MP::Num<N>& lhs, const MP::Num<M>& rhs);
+
+template <int N> auto operator<=>(const MP::Num<N> lhs, const std::int64_t rhs);
+
+template <int N> auto operator<=>(const std::int64_t lhs, const MP::Num<N> rhs);
 
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator+(const MP::Num<N>& lhs,
@@ -130,6 +136,8 @@ MP::Num<N> operator*(const MP::Num<N>& num, const MP::trivial auto mul);
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator*(const MP::Num<N>& lhs,
                                         const MP::Num<M>& rhs);
+
+template <int N> MP::Num<N> operator*(const MP::Num<N>& lhs, std::uint32_t rhs);
 
 template <int N, int M>
 MP::Num<template_max<N, M>()> operator/(const MP::Num<N>& lhs,

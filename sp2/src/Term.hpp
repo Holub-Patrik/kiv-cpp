@@ -101,7 +101,7 @@ Term<N>::split_eq(const std::string& eq_string) {
                                [](unsigned char x) { return std::isspace(x); }),
                 trimmed.end());
 
-  std::regex eq_regex("(\\w+!?)(?:([\\+\\-\\*\\/])(.+))?");
+  std::regex eq_regex("(\\$?\\w+!?)(?:([\\+\\-\\*\\/])(.+))?");
   std::smatch matches;
   bool valid_eq = std::regex_match(trimmed, matches, eq_regex);
 
@@ -169,29 +169,36 @@ Term<N>::parse_numbers(const std::array<std::string, 3>& eq) {
   MP::Num<N> l_num;
   MP::Num<N> r_num;
 
-  // TODO: $1-5 has to be recognised as bank numbers
-
-  switch (enum_op) {
-    // handling for binary operations is the same
-  case ADD:
-  case SUB:
-  case MUL:
-  case DIV:
+  // lhs has to always exist
+  if (lhs.starts_with("$")) {
+    auto bank_index = std::atoi(lhs.substr(1).c_str());
+    if (bank_index <= 0 || bank_index > 5) {
+      return std::nullopt;
+    } else {
+      l_num = bank[bank_index - 1];
+    }
+  } else {
     try {
       l_num = std::move(MP::Num<N>{lhs});
+    } catch (MP::Exception<N> ex) {
+      return std::nullopt;
+    }
+  }
+
+  // possibly non-existent (equal to "")
+  if (rhs != "" && rhs.starts_with("$")) {
+    auto bank_index = std::atoi(rhs.substr(1).c_str());
+    if (bank_index <= 0 || bank_index > 5) {
+      return std::nullopt;
+    } else {
+      r_num = bank[bank_index - 1];
+    }
+  } else {
+    try {
       r_num = std::move(MP::Num<N>{rhs});
     } catch (MP::Exception<N> ex) {
       return std::nullopt;
     }
-    break;
-  case FAC:
-    try {
-      l_num = std::move(MP::Num<N>{lhs});
-    } catch (MP::Exception<N> eq) {
-      return std::nullopt;
-    }
-    r_num = std::move(MP::Num<N>{0});
-    break;
   }
 
   return std::make_tuple(l_num, enum_op, r_num);
@@ -231,7 +238,7 @@ template <int N> void Term<N>::run() {
     } else if (usr_in == "bank") {
       int index = 0;
       for (auto num : bank) {
-        std::cout << "$" << index << " = " << num << std::endl;
+        std::cout << "$" << index + 1 << " = " << num << std::endl;
         index++;
       }
     } else {

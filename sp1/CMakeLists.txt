@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 
-set(CMAKE_CPP_COMPILER "clang++")
+set(CMAKE_CPP_COMPILER "g++")
 
 project(Drawing)
 

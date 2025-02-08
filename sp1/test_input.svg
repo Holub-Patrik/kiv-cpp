@@ -1,0 +1,11 @@
+<svg version="1.1" width="160" height="160" style="background-color:white" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="50" r="10" transform="matrix(-0.35355339059327373 0.3535533905932738 -0.3535533905932738 -0.35355339059327373 169.19417382415924 38.661165235168156)" style="fill:white;fill-opacity:0;stroke:black;stroke-width:2"/>
+<line x1="50" y1="50" x2="100" y2="50" transform="matrix(-0.35355339059327373 0.3535533905932738 -0.3535533905932738 -0.35355339059327373 169.19417382415924 38.661165235168156)" style="stroke:black;stroke-width:2"/>
+<circle cx="100" cy="50" r="15" transform="matrix(-0.35355339059327373 0.3535533905932738 -0.3535533905932738 -0.35355339059327373 169.19417382415924 38.661165235168156)" style="fill:white;fill-opacity:0;stroke:black;stroke-width:2"/>
+<rect x="10" y="10" width="40" height="30" transform="matrix(3.0616169978683824e-17 0.5 -0.5 3.0616169978683824e-17 160 1.4210854715202004e-14)" style="fill:white;fill-opacity:0;stroke:black;stroke-width:2"/>
+<line x1="20" y1="20" x2="100" y2="80" transform="matrix(1.5308084989341912e-17 0.25 -0.25 1.5308084989341912e-17 160 1.4210854715202004e-14)" style="stroke:black;stroke-width:2"/>
+<line x1="5" y1="20" x2="25" y2="5" transform="matrix(6.123233995736765e-17 1 -1 6.123233995736765e-17 160 1.4210854715202004e-14)" style="stroke:black;stroke-width:2"/>
+<circle cx="40" cy="40" r="30" transform="matrix(6.123233995736766e-17 -1 1 6.123233995736766e-17 -1.4210854715202004e-14 160)" style="fill:white;fill-opacity:0;stroke:black;stroke-width:2"/>
+<circle cx="40" cy="40" r="30" transform="matrix(-1 -1.2246467991473532e-16 1.2246467991473532e-16 -1 160 160)" style="fill:white;fill-opacity:0;stroke:black;stroke-width:2"/>
+<rect x="10" y="10" width="60" height="60" transform="matrix(1 0 0 1 0 0)" style="fill:white;fill-opacity:0;stroke:black;stroke-width:2"/>
+</svg>
